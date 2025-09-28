@@ -1,6 +1,6 @@
 package org.example.app.common
 
-import org.example.app.user.EmailAlreadyUsedException
+import org.example.app.auth.EmailAlreadyUsedException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -17,5 +17,5 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyUsedException::class)
     fun onDuplicateEmail(ex: EmailAlreadyUsedException) =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("message" to ex.message))
+        ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("message" to (ex.message ?: "EMAIL_IN_USE")))
 }

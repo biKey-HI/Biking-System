@@ -8,7 +8,7 @@ import java.time.Instant
     name = "users",
     uniqueConstraints = [UniqueConstraint(columnNames = ["email"])]
 )
-open class User(
+class User(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
 
