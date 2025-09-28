@@ -1,3 +1,5 @@
+// This is the app entry point, and it sets the Compose content and a small NavHost (with startDestination = "register")
+// It immediately shows the Registration Screen (RegisterScreen)
 package com.example.bikey
 
 import android.os.Bundle

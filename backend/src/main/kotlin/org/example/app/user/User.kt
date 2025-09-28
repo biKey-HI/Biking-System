@@ -1,3 +1,5 @@
+// JPA entity mapped to table users: id (auto-generated), email (unique),
+// passwordHash, displayName, createdAt.
 package org.example.app.user
 
 import jakarta.persistence.*

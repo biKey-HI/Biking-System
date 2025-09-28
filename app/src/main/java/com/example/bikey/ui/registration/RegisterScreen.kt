@@ -1,3 +1,7 @@
+// This is the registration form's UI. It creates/gets a RegisterViewModel, then displays text
+// fields for email and password, a submit button, and reacts to state (loading, error, success).
+// Then, on success, it calls the onRegistered(email) callback
+// (so MainActivity can navigate, e.g., to “home” later).
 package com.example.bikey.ui.registration
 
 import androidx.compose.foundation.layout.*
@@ -27,7 +31,7 @@ fun RegisterScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Créer un compte", style = MaterialTheme.typography.headlineMedium)
+            Text("Create an account", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(24.dp))
 
             OutlinedTextField(
@@ -41,7 +45,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = state.password,
                 onValueChange = vm::onPasswordChange,
-                label = { Text("Mot de passe (min 8)") },
+                label = { Text("Password (min 8)") },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -58,7 +62,7 @@ fun RegisterScreen(
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (state.isLoading) "Enregistrement..." else "S'inscrire")
+                Text(if (state.isLoading) "Saving..." else "Register")
             }
         }
     }

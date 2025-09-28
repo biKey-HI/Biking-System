@@ -1,3 +1,6 @@
+// Business logic for registration: Checks if email already exists; if yes,
+// throws EmailAlreadyUsedException. Then it hashes the password with BCrypt and
+// saves a User. Finally, it returns the created user id + email.
 package org.example.app.auth
 
 import org.example.app.user.User

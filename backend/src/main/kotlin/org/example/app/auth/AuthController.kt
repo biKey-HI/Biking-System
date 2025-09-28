@@ -1,3 +1,6 @@
+// It's the REST controller mounted at /api/auth. Exposes POST /api/auth/register
+// and expects a JSON body (annotated with @RequestBody) and runs bean validation (@Valid).
+// Returns 201 Created on success with a small response payload.
 package org.example.app.auth
 
 import jakarta.validation.Valid
