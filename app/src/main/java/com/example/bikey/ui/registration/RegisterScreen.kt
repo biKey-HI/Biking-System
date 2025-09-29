@@ -12,58 +12,108 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.SnackbarDuration
 
 @Composable
 fun RegisterScreen(
-    vm: RegisterViewModel = viewModel(),
-    onRegistered: (String) -> Unit = {}
+    onRegistered: (String) -> Unit = {},
+    viewModel: RegisterViewModel = viewModel()
 ) {
-    val state = vm.state
+    val state = viewModel.state
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.successEmail) {
-        state.successEmail?.let(onRegistered)
+    LaunchedEffect(state.error) {
+        state.error?.let { snackbarHostState.showSnackbar(it) }
     }
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            Modifier
-                .fillMaxWidth()
+    // Show success message then consume it (and optionally navigate)
+    LaunchedEffect(state.successMessage, state.successEmail) {
+        val msg = state.successMessage
+        val email = state.successEmail
+        if (msg != null && email != null) {
+            snackbarHostState.showSnackbar(
+                message = msg,
+                withDismissAction = true,
+                duration = SnackbarDuration.Short
+            )
+            onRegistered(email)      // ← navigate AFTER the snackbar
+            viewModel.consumeSuccess()
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            contentAlignment = Alignment.Center
         ) {
-            Text("Create an account", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(24.dp))
-
-            OutlinedTextField(
-                value = state.email,
-                onValueChange = vm::onEmailChange,
-                label = { Text("Email") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = vm::onPasswordChange,
-                label = { Text("Password (min 8)") },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(12.dp))
-
-            if (state.error != null) {
-                Text(state.error!!, color = MaterialTheme.colorScheme.error)
-                Spacer(Modifier.height(8.dp))
-            }
-
-            Button(
-                onClick = vm::submit,
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(if (state.isLoading) "Saving..." else "Register")
+                Text("Create an account", style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.height(12.dp))
+
+                // Display name
+                OutlinedTextField(
+                    value = state.displayName,
+                    onValueChange = viewModel::onDisplayNameChange,
+                    label = { Text("Display name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Email
+                OutlinedTextField(
+                    value = state.email,
+                    onValueChange = viewModel::onEmailChange,
+                    label = { Text("Email") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Password
+                OutlinedTextField(
+                    value = state.password,
+                    onValueChange = viewModel::onPasswordChange,
+                    label = { Text("Password (min 8)") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (!state.error.isNullOrBlank()) {
+                    Text(
+                        text = state.error ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Button(
+                    onClick = viewModel::submit,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Text("Registering…")
+                    } else {
+                        Text("Register")
+                    }
+                }
             }
         }
     }
 }
+
