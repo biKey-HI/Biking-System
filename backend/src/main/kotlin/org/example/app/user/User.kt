@@ -8,7 +8,8 @@ import java.time.Instant
 @Entity
 @Table(
     name = "users",
-    uniqueConstraints = [UniqueConstraint(columnNames = ["email"])]
+    uniqueConstraints = [UniqueConstraint(columnNames = ["email"]),
+        UniqueConstraint(name = "ux_users_username", columnNames = ["username"])]
 )
 class User(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
