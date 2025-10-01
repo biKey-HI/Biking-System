@@ -15,6 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import android.util.Log
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+
 
 data class RegisterUiState(
     val email: String = "",
@@ -28,11 +31,20 @@ data class RegisterUiState(
     val successMessage: String? = null,
 )
 
+sealed class RegisterEvent {
+    data object EmailInUse : RegisterEvent()
+    data class Success(val email: String) : RegisterEvent()
+    data class Failure(val message: String) : RegisterEvent()
+}
 class RegisterViewModel(
     private val api: AuthApi = authApi
 ) : ViewModel() {
+//        var state: LoginState = LoginState()
+//        private set
+private val _events = MutableSharedFlow<RegisterEvent>()
+    val events = _events.asSharedFlow()
 
-    // make it observable by Compose
+
     var state by mutableStateOf(RegisterUiState())
         private set
 
@@ -83,6 +95,10 @@ class RegisterViewModel(
                             username = ""
                         )
                     }
+                    _events.emit(RegisterEvent.Success(email))
+                } else if (res.code() == 409) {
+                    set { copy(isLoading = false, error = "Account exists. Please log in.") }
+                    _events.emit(RegisterEvent.EmailInUse)
                 } else {
                     val errorBody = res.errorBody()?.string().orEmpty()
                     val msg = buildString {
@@ -92,11 +108,13 @@ class RegisterViewModel(
                     // debug log to Logcat
                     Log.e("RegisterViewModel", "Registration failed: $msg")
                     set { copy(isLoading = false, error = msg) }
+                    _events.emit(RegisterEvent.Failure(msg))
                 }
             } catch (e: Exception) {
                 Log.e("RegisterVM", "EXCEPTION during register", e)
                 val msg = if (e.message?.contains("409") == true) "Email already used" else "Error: ${e.message}"
                 set { copy(isLoading = false, error = msg) }
+                _events.emit(RegisterEvent.Failure(msg))
             }
         }
     }

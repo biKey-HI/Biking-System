@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.bikey.ui.registration.RegisterScreen
+import com.example.bikey.ui.login.LoginScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,12 +20,23 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Surface {
                     val nav = rememberNavController()
-                    NavHost(navController = nav, startDestination = "register") {
+                    NavHost(
+                        navController = nav,
+                        startDestination = "register"
+                    ) {
                         composable("register") {
-                            RegisterScreen(onRegistered = { email ->
-                                // Navigate somewhere (home), or show success
-                                // nav.navigate("home")
+                            RegisterScreen(
+                                onRegistered = { email -> },
+                                onGoToLogin = {
+                                nav.navigate("login")
+                            }
+                            )
+                        }
+                        composable("login") {
+                            LoginScreen(onLoggedIn = { email ->
+
                             })
+
                         }
                         // composable("home") { HomeScreen() }
                     }
@@ -33,3 +45,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+

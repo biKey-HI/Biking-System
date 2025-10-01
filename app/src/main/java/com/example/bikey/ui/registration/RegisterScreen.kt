@@ -16,6 +16,7 @@ import androidx.compose.material3.SnackbarDuration
 
 @Composable
 fun RegisterScreen(
+    onGoToLogin: () -> Unit = {},
     onRegistered: (String) -> Unit = {},
     viewModel: RegisterViewModel = viewModel()
 ) {
@@ -26,18 +27,30 @@ fun RegisterScreen(
         state.error?.let { snackbarHostState.showSnackbar(it) }
     }
 
-    // Show success message then consume it (and optionally navigate)
-    LaunchedEffect(state.successMessage, state.successEmail) {
-        val msg = state.successMessage
-        val email = state.successEmail
-        if (msg != null && email != null) {
-            snackbarHostState.showSnackbar(
-                message = msg,
-                withDismissAction = true,
-                duration = SnackbarDuration.Short
-            )
-            onRegistered(email)      // ← navigate AFTER the snackbar
-            viewModel.consumeSuccess()
+    // Collect events
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is RegisterEvent.EmailInUse -> {
+                    snackbarHostState.showSnackbar(
+                        "Account exists. Redirecting to login…",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Short
+                    )
+                    onGoToLogin()
+                }
+                is RegisterEvent.Success -> {
+                    snackbarHostState.showSnackbar(
+                        "Registered as ${event.email}",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Short
+                    )
+                    onRegistered(event.email)
+                }
+                is RegisterEvent.Failure -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
         }
     }
 

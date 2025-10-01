@@ -14,6 +14,11 @@ class AuthController(
 ) {
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
+
     fun register(@Valid @RequestBody req: RegisterRequest): RegisterResponse =
         authService.register(req)
+
+    @PostMapping("/login")
+    fun login(@Valid @RequestBody req: LoginRequest): LoginResponse =
+        authService.login(req)
 }

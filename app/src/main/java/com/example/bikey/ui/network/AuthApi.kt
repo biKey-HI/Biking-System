@@ -2,6 +2,9 @@ package com.example.bikey.ui.network
 
 import com.example.bikey.BuildConfig
 import com.example.bikey.ui.registration.model.RegisterRequest
+import com.example.bikey.ui.registration.model.RegisterResponse
+import com.example.bikey.ui.login.model.LoginRequest
+import com.example.bikey.ui.login.model.LoginResponse
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -15,7 +18,10 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 
 interface AuthApi {
     @POST("api/auth/register")
-    suspend fun register(@Body request: RegisterRequest): Response<Unit>
+    suspend fun register(@Body request: RegisterRequest): Response<RegisterResponse>
+
+    @POST("/api/auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 }
 
 // A small Retrofit provider (or move this to a DI module)
@@ -34,7 +40,7 @@ private val httpClient: OkHttpClient by lazy {
 
 val authRetrofit: Retrofit by lazy {
     Retrofit.Builder()
-        .baseUrl(BuildConfig.BASE_URL) // <- needs the BuildConfig and the field above
+        .baseUrl(BuildConfig.BASE_URL)
         .addConverterFactory(json.asConverterFactory(contentType))
         .client(httpClient)
         .build()
