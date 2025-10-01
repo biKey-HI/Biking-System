@@ -18,11 +18,16 @@ class AuthService(
         if (userRepository.existsByEmail(req.email)) {
             throw EmailAlreadyUsedException()
         }
+        if (userRepository.existsByUsername(req.username)) {
+            throw UsernameAlreadyUsedException()
+        }
         val user = userRepository.save(
             User(
                 email = req.email,
                 passwordHash = encoder.encode(req.password),
-                displayName = req.displayName
+                firstName = req.firstName,
+                lastName = req.lastName,
+                username = req.username
             )
         )
         return RegisterResponse(
@@ -32,4 +37,8 @@ class AuthService(
     }
 }
 
-class EmailAlreadyUsedException : RuntimeException("EMAIL_IN_USE")
+class EmailAlreadyUsedException : RuntimeException("EMAIL_IN_USE: " +
+        "This email is already used. Please use another email or login with this one.")
+
+class UsernameAlreadyUsedException :
+    RuntimeException("USERNAME_IN_USE: This username is already taken. Choose another one.")

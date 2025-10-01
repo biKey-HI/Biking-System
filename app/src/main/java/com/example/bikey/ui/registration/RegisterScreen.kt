@@ -59,11 +59,29 @@ fun RegisterScreen(
                 Text("Create an account", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(12.dp))
 
-                // Display name
+                // First Name
                 OutlinedTextField(
-                    value = state.displayName,
-                    onValueChange = viewModel::onDisplayNameChange,
-                    label = { Text("Display name") },
+                    value = state.firstName,
+                    onValueChange = viewModel::onfirstNameChange,
+                    label = { Text("First name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Last Name
+                OutlinedTextField(
+                    value = state.lastName,
+                    onValueChange = viewModel::onlastNameChange,
+                    label = { Text("Last name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Username
+                OutlinedTextField(
+                    value = state.username,
+                    onValueChange = viewModel::onUsernameChange,
+                    label = { Text("Username") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )

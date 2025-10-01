@@ -21,7 +21,13 @@ class User(
     var passwordHash: String,
 
     @Column(nullable = false, length = 120)
-    var displayName: String,
+    var firstName: String,
+
+    @Column(nullable = false, length = 120)
+    var lastName: String,
+
+    @Column(nullable = false, length = 120)
+    var username: String,
 
     @Column(nullable = false)
     var createdAt: Instant = Instant.now()
