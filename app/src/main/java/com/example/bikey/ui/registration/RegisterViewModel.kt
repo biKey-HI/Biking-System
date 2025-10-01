@@ -19,7 +19,9 @@ import android.util.Log
 data class RegisterUiState(
     val email: String = "",
     val password: String = "",
-    val displayName: String = "",
+    val firstName: String = "",
+    val lastName: String = "",
+    val username: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
     val successEmail: String? = null,
@@ -40,14 +42,19 @@ class RegisterViewModel(
 
     fun onEmailChange(v: String) = set { copy(email = v, error = null) }
     fun onPasswordChange(v: String) = set { copy(password = v, error = null) }
-    fun onDisplayNameChange(v: String) = set { copy(displayName = v, error = null) }
+    fun onfirstNameChange(v: String) = set { copy(firstName = v, error = null) }
+    fun onlastNameChange(v: String) = set { copy(lastName = v, error = null) }
+    fun onUsernameChange(v: String) = set { copy(username = v, error = null) }
 
     fun submit() {
-        Log.d("RegisterVM", "submit() tapped. email='${state.email}', name='${state.displayName}'")
+        Log.d("RegisterVM", "submit() tapped. email='${state.email}', firstname='${state.firstName}'," +
+                "lastname='${state.lastName}', usernamename='${state.username}'")
 
         val email = state.email.trim()
         val pwd = state.password
-        val name = state.displayName.trim()
+        val firstname = state.firstName.trim()
+        val lastname = state.lastName.trim()
+        val usernamename = state.username.trim()
 
         if (!email.contains("@") || pwd.length < 8) {
             set { copy(error = "Invalid email or password < 8 characters") }
@@ -60,17 +67,20 @@ class RegisterViewModel(
             try {
                 // Use named params so there’s no ambiguity
                 Log.d("RegisterVM", "Calling API…")
-                val res = api.register(RegisterRequest(email = email, password = pwd, displayName = name))
+                val res = api.register(RegisterRequest(email = email, password = pwd, firstName = firstname,
+                    lastName = lastname, username = usernamename))
                 if (res.isSuccessful) {
                     Log.i("RegisterVM", "SUCCESS ${res.code()} – will clear fields and set successMessage")
                     set {
                         copy(
                             isLoading = false,
                             successEmail = email,
-                            successMessage = "Successful Registration, $name! Your account is ready.",
+                            successMessage = "Successful Registration, $username ! Your account is ready.",
                             email = "",
                             password = "",
-                            displayName = ""
+                            firstName = "",
+                            lastName = "",
+                            username = ""
                         )
                     }
                 } else {
