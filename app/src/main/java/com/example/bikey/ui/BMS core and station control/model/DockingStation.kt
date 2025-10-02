@@ -8,14 +8,13 @@ import com.google.android.gms.maps.model.LatLng
 import android.location.Geocoder
 import android.content.Context
 
-
 // -- DOCKING STATIONS -- \\
 
 data class DockingStation(val id: UUID = UUID.randomUUID(),
     var name: String,
     var address: Address,
     var location: LatLng,
-    var context: Context? = null,
+    var context: Context? = null, // No need to include unless Address is missing (useful to infer address from location)
     var status: DockingStationState? = null,
     var capacity: Int = 20,
     var numFreeDocks: Int = capacity,
@@ -25,7 +24,9 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     var stateChanges: MutableList<DockingStationStateTransition>?,
     var dashboard: Dashboard? = null,
     var docks: MutableList<Dock> = MutableList(capacity) {Dock()} // Reservation truth not guaranteed when accessed directly; use updateReservation() first
+    // Always include a docks list unless the station's docks are all empty
 ) {
+    val lock = Any()
     constructor(name: String? = null,
     address: Address? = null,
     location: LatLng? = null,
@@ -151,23 +152,42 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
 
     fun updateReservation(): Unit? {
         val ok: Unit? = Unit
-        if(aBikeIsReserved) {
-            val reservedDock = docks.filter {it.bike?.status == BikeState.RESERVED}.firstOrNull()
-            if(reservedDock != null && Instant.now().isAfter(reservedDock.bike!!.reservationExpiryTime!!)) {
-                reservedDock.bike!!.reservationExpiryTime = null
-                reservedDock.bike!!.statusTransitions.add(BikeStateTransition(reservedDock.bike!!.id, reservedDock.bike!!.status, BikeState.AVAILABLE, Instant.now()))
-                reservedDock.bike!!.status = BikeState.AVAILABLE
-                aBikeIsReserved = false
-                return ok
+        val fail: Unit? = null
+        synchronized(lock) {
+            if (aBikeIsReserved) {
+                val reservedDock = docks.filter { it.bike?.status == BikeState.RESERVED }.firstOrNull()
+                if (reservedDock != null && Instant.now()
+                        .isAfter(reservedDock.bike!!.reservationExpiryTime!!)
+                ) {
+                    reservedDock.bike!!.reservationExpiryTime = null
+                    reservedDock.bike!!.statusTransitions.add(
+                        BikeStateTransition(
+                            reservedDock.bike!!.id,
+                            reservedDock.bike!!.status,
+                            BikeState.AVAILABLE,
+                            Instant.now()
+                        )
+                    )
+                    reservedDock.bike!!.status = BikeState.AVAILABLE
+                    aBikeIsReserved = false
+                    return ok
+                }
             }
         }
-        return null
+        return fail
     }
 
-    companion object {
+    companion object { // Only called by operators, not cyclists
         fun moveBike(bike: Bicycle, fromStation: DockingStation, toStation: DockingStation, toDockId: UUID? = null): Boolean? { // 3-level return indicators:
-            if (fromStation.takeBike(bike) == null) return null // return null if fails immediately -- bike still in station
-            return toStation.returnBike(bike, toDockId) != null // return false if fails later -- bike out of both stations; otherwise, return true -- bike was successfully placed into station
+            val fail = null
+            
+            val (first, second) = if(fromStation.id < toStation.id) fromStation to toStation else toStation to fromStation // Little trick to prevent deadlocks
+            synchronized(first.lock) {
+                synchronized(second.lock) {
+                    if (fromStation.takeBike(bike) == null) return fail // return null if fails immediately -- bike still in station
+                    return toStation.returnBike(bike, toDockId) != fail // return false if fails later -- bike out of both stations
+                } // return true if does not fail -- bike was successfully placed into station
+            }
         }
     }
 }
@@ -189,20 +209,32 @@ interface DockingStationState {
 
 class Empty(override val station: DockingStation): DockingStationState {
     val ok: Unit? = Unit
+    val fail: Unit? = null
     override fun setStation(station: DockingStation): Unit? {
-        if (station.status is Full || station.status is OutOfService || station.status is PartiallyFilled) {
-            return null
+        synchronized(station.lock) {
+            if (station.status is Full || station.status is OutOfService || station.status is PartiallyFilled) {
+                return fail
+            }
+            station.status = this
         }
-        station.status = this
         return ok
     }
     override fun changeStationStatus(status: DockingStationState): Unit? {
         val ok: Unit? = Unit
-        if (station.docks.filter {it.status == DockState.OCCUPIED}.count() < 1) {
-            return null
+        synchronized(station.lock) {
+            if (station.docks.filter { it.status == DockState.OCCUPIED }.count() < 1) {
+                return fail
+            }
+            station.status = status
+            station.stateChanges!!.add(
+                DockingStationStateTransition(
+                    station.id,
+                    this,
+                    status,
+                    Instant.now()
+                )
+            )
         }
-        station.status = status
-        station.stateChanges!!.add(DockingStationStateTransition(station.id, this, status, Instant.now()))
         return ok
     }
 
@@ -212,26 +244,36 @@ class Empty(override val station: DockingStation): DockingStationState {
     override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = null
     override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        if(bike.status != BikeState.ON_TRIP) return null
-        if(dockId != null && station.docks.firstOrNull {it.id == dockId} == null) return null
-        if(dockId == null && station.docks.firstOrNull {it.status == DockState.EMPTY} == null) return null
-        var dock: Dock
-        if(dockId != null) dock = station.docks.firstOrNull {it.id == dockId}!!
-        else dock = station.docks.firstOrNull {it.status == DockState.EMPTY}!!
+        synchronized(station.lock) {
+            if (bike.status != BikeState.ON_TRIP) return fail
+            if (dockId != null && station.docks.firstOrNull { it.id == dockId } == null) return fail
+            if (dockId == null && station.docks.firstOrNull { it.status == DockState.EMPTY } == null) return fail
+            var dock: Dock
+            if (dockId != null) dock = station.docks.firstOrNull { it.id == dockId }!!
+            else dock = station.docks.firstOrNull { it.status == DockState.EMPTY }!!
 
-        dock.bike = bike
+            dock.bike = bike
 
-        station.numFreeDocks--
-        station.numOccupiedDocks++
+            station.numFreeDocks--
+            station.numOccupiedDocks++
 
-        bike.status = BikeState.AVAILABLE
-        bike.statusTransitions.add(BikeStateTransition(bike.id, BikeState.ON_TRIP, BikeState.AVAILABLE, Instant.now()))
+            bike.status = BikeState.AVAILABLE
+            bike.statusTransitions.add(
+                BikeStateTransition(
+                    bike.id,
+                    BikeState.ON_TRIP,
+                    BikeState.AVAILABLE,
+                    Instant.now()
+                )
+            )
 
-        dock.status = DockState.OCCUPIED
+            dock.status = DockState.OCCUPIED
 
-        station.changeStationStatus(PartiallyFilled(station))
-        station.changeStationStatus(Full(station))
+            station.changeStationStatus(PartiallyFilled(station))
+            station.changeStationStatus(Full(station))
+        }
         return ok
     }
 }
@@ -239,203 +281,343 @@ class Empty(override val station: DockingStation): DockingStationState {
 class PartiallyFilled(override val station: DockingStation): DockingStationState {
     override fun setStation(station: DockingStation): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        if (station.status is Full || station.status is OutOfService || station.status is Empty) {
-            return null
+        synchronized(station.lock) {
+            if (station.status is Full || station.status is OutOfService || station.status is Empty) {
+                return fail
+            }
+            station.status = this
         }
-        station.status = this
         return ok
     }
+
     override fun changeStationStatus(status: DockingStationState): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        if (station.docks.filter {it.status == DockState.OCCUPIED}.count() > 0 && station.docks.filter {it.status == DockState.EMPTY}.count() > 0) {
-            return null
+        synchronized(station.lock) {
+            if (station.docks.filter { it.status == DockState.OCCUPIED }
+                    .count() > 0 && station.docks.filter { it.status == DockState.EMPTY }
+                    .count() > 0) {
+                return fail
+            }
+            station.stateChanges!!.add(
+                DockingStationStateTransition(
+                    station.id,
+                    this,
+                    status,
+                    Instant.now()
+                )
+            )
+            station.status = status
         }
-        station.stateChanges!!.add(DockingStationStateTransition(station.id, this, status, Instant.now()))
-        station.status = status
         return ok
     }
 
     override fun bikeIsAvailable(): Boolean? {
-        station.updateReservation()
-        return station.docks.filter {it.bike?.status == BikeState.AVAILABLE && it.status == DockState.OCCUPIED}.count() > 0
+        synchronized(station.lock) {
+            station.updateReservation()
+            return station.docks.filter { it.bike?.status == BikeState.AVAILABLE && it.status == DockState.OCCUPIED }
+                .count() > 0
+        }
     }
 
     override fun reserveBike(bike: Bicycle?): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        station.updateReservation()
-        if(station.aBikeIsReserved) return null
+        synchronized(station.lock) {
+            station.updateReservation()
+            if (station.aBikeIsReserved) return fail
 
-        if(bike != null) {
-            if(station.docks.filter {it.bike?.id == bike.id}.count() < 1 || station.docks.filter {it.bike?.id == bike.id && it.bike!!.status != BikeState.AVAILABLE}.count() > 0) return null
-            station.aBikeIsReserved = true
-            val d = station.docks.filter {it.bike?.id == bike.id}.first()
-            d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
-            d.bike!!.statusTransitions.add(BikeStateTransition(bike.id, bike.status, BikeState.RESERVED, Instant.now()))
-            d.bike!!.status = BikeState.RESERVED
-        } else {
-            if(station.docks.filter {it.bike?.status == BikeState.AVAILABLE}.count() < 1) return null
-            station.aBikeIsReserved = true
-            val d = station.docks.filter {it.bike?.status == BikeState.AVAILABLE}.first()
-            d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
-            d.bike!!.statusTransitions.add(BikeStateTransition(d.bike!!.id, d.bike!!.status, BikeState.RESERVED, Instant.now()))
-            d.bike!!.status = BikeState.RESERVED
+            if (bike != null) {
+                if (station.docks.filter { it.bike?.id == bike.id }
+                        .count() < 1 || station.docks.filter { it.bike?.id == bike.id && it.bike!!.status != BikeState.AVAILABLE }
+                        .count() > 0) return fail
+                station.aBikeIsReserved = true
+                val d = station.docks.filter { it.bike?.id == bike.id }.first()
+                d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        bike.status,
+                        BikeState.RESERVED,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.RESERVED
+            } else {
+                if (station.docks.filter { it.bike?.status == BikeState.AVAILABLE }
+                        .count() < 1) return fail
+                station.aBikeIsReserved = true
+                val d = station.docks.filter { it.bike?.status == BikeState.AVAILABLE }.first()
+                d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        d.bike!!.id,
+                        d.bike!!.status,
+                        BikeState.RESERVED,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.RESERVED
+            }
         }
         return ok
     }
 
     override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
         val fromReservation = fromReservation ?: false
 
-        station.updateReservation()
+        synchronized(station.lock) {
+            station.updateReservation()
 
-        if(fromReservation) {
-            if(station.docks.filter {it.bike?.id == bike.id && it.bike?.status == BikeState.RESERVED}.count() < 1) return null
-            station.aBikeIsReserved = false
+            if (fromReservation) {
+                if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.RESERVED }
+                        .count() < 1) return fail
+                station.aBikeIsReserved = false
 
-            val d = station.docks.filter {it.bike?.id == bike.id}.first()
-            d.bike!!.reservationExpiryTime = null
-            d.bike!!.statusTransitions.add(BikeStateTransition(bike.id, BikeState.RESERVED, BikeState.ON_TRIP, Instant.now()))
-            d.bike!!.status = BikeState.ON_TRIP
+                val d = station.docks.filter { it.bike?.id == bike.id }.first()
+                d.bike!!.reservationExpiryTime = null
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        BikeState.RESERVED,
+                        BikeState.ON_TRIP,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.ON_TRIP
 
-            d.status = DockState.EMPTY
-        } else {
-            if(station.docks.filter {it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE}.count() < 1) return null
+                d.status = DockState.EMPTY
+            } else {
+                if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE }
+                        .count() < 1) return fail
 
-            val d = station.docks.filter {it.bike?.id == bike.id}.first()
-            d.bike!!.reservationExpiryTime = null
-            d.bike!!.statusTransitions.add(BikeStateTransition(bike.id, BikeState.AVAILABLE, BikeState.ON_TRIP, Instant.now()))
-            d.bike!!.status = BikeState.ON_TRIP
+                val d = station.docks.filter { it.bike?.id == bike.id }.first()
+                d.bike!!.reservationExpiryTime = null
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        BikeState.AVAILABLE,
+                        BikeState.ON_TRIP,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.ON_TRIP
 
-            d.status = DockState.EMPTY
+                d.status = DockState.EMPTY
+            }
+
+            station.numFreeDocks++
+            station.numOccupiedDocks--
+            station.changeStationStatus(Empty(station))
         }
-
-        station.numFreeDocks++
-        station.numOccupiedDocks--
-        station.changeStationStatus(Empty(station))
         return ok
     }
 
     override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        station.updateReservation()
+        synchronized(station.lock) {
+            station.updateReservation()
 
-        if(bike.status != BikeState.RESERVED && station.docks.filter {it.bike?.id == bike?.id}.count() > 0) return null
-        if(bike.status == BikeState.RESERVED && station.docks.filter {it.bike?.id == bike?.id && it.bike!!.status == BikeState.RESERVED}.count() < 1) return null
-        if(bike.status == BikeState.ON_TRIP && station.docks.filter {it.status == DockState.EMPTY}.count() < 1) return null
-        if(bike.status != BikeState.ON_TRIP && bike.status != BikeState.RESERVED) return null
+            if (bike.status != BikeState.RESERVED && station.docks.filter { it.bike?.id == bike?.id }
+                    .count() > 0) return fail
+            if (bike.status == BikeState.RESERVED && station.docks.filter { it.bike?.id == bike?.id && it.bike!!.status == BikeState.RESERVED }
+                    .count() < 1) return fail
+            if (bike.status == BikeState.ON_TRIP && station.docks.filter { it.status == DockState.EMPTY }
+                    .count() < 1) return fail
+            if (bike.status != BikeState.ON_TRIP && bike.status != BikeState.RESERVED) return fail
 
-        if(bike.status == BikeState.RESERVED) {
-            station.docks.filter {it.bike?.status == BikeState.RESERVED}.first().bike!!.statusTransitions.add(BikeStateTransition(bike.id, BikeState.RESERVED, BikeState.AVAILABLE, Instant.now()))
-            station.docks.filter {it.bike?.status == BikeState.RESERVED}.first().bike!!.status = BikeState.AVAILABLE
-            station.aBikeIsReserved = false
-        } else {
-            val dockId = dockId ?: station.docks.filter {it.status == DockState.EMPTY}.firstOrNull()?.id
+            if (bike.status == BikeState.RESERVED) {
+                station.docks.filter { it.bike?.status == BikeState.RESERVED }
+                    .first().bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        BikeState.RESERVED,
+                        BikeState.AVAILABLE,
+                        Instant.now()
+                    )
+                )
+                station.docks.filter { it.bike?.status == BikeState.RESERVED }
+                    .first().bike!!.status = BikeState.AVAILABLE
+                station.aBikeIsReserved = false
+            } else {
+                val dockId = dockId ?: station.docks.filter { it.status == DockState.EMPTY }
+                    .firstOrNull()?.id
 
-            if(dockId == null) return null
-            if(station.docks.filter {it.id == dockId}.count() < 1 || station.docks.filter {it.id == dockId}.first().status != DockState.EMPTY) return null
+                if (dockId == null) return fail
+                if (station.docks.filter { it.id == dockId }
+                        .count() < 1 || station.docks.filter { it.id == dockId }
+                        .first().status != DockState.EMPTY) return fail
 
-            station.docks.first {it.id == dockId}.bike = bike
+                station.docks.first { it.id == dockId }.bike = bike
 
-            station.numFreeDocks--
-            station.numOccupiedDocks++
+                station.numFreeDocks--
+                station.numOccupiedDocks++
 
-            bike.status = BikeState.AVAILABLE
-            bike.statusTransitions.add(BikeStateTransition(bike.id, BikeState.ON_TRIP, BikeState.AVAILABLE, Instant.now()))
+                bike.status = BikeState.AVAILABLE
+                bike.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        BikeState.ON_TRIP,
+                        BikeState.AVAILABLE,
+                        Instant.now()
+                    )
+                )
 
-            station.docks.first {it.id == dockId}.status = DockState.OCCUPIED
+                station.docks.first { it.id == dockId }.status = DockState.OCCUPIED
 
-            station.changeStationStatus(Full(station))
+                station.changeStationStatus(Full(station))
+            }
         }
         return ok
     }
 }
 
 class Full(override val station: DockingStation): DockingStationState {
+
     override fun setStation(station: DockingStation): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        if (station.status is PartiallyFilled || station.status is OutOfService || station.status is Empty) {
-            return null
+        synchronized(station.lock) {
+            if (station.status is PartiallyFilled || station.status is OutOfService || station.status is Empty) {
+                return fail
+            }
+            station.status = this
         }
-        station.status = this
         return ok
     }
+
     override fun changeStationStatus(status: DockingStationState): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        if (station.docks.filter {it.status == DockState.EMPTY}.count() > 0) {
-            return null
+        synchronized(station.lock) {
+            if (station.docks.filter { it.status == DockState.EMPTY }.count() > 0) {
+                return fail
+            }
+            station.stateChanges!!.add(
+                DockingStationStateTransition(
+                    station.id,
+                    this,
+                    status,
+                    Instant.now()
+                )
+            )
+            station.status = status
         }
-        station.stateChanges!!.add(DockingStationStateTransition(station.id, this, status, Instant.now()))
-        station.status = status
         return ok
     }
 
     override fun bikeIsAvailable(): Boolean? {
-        station.updateReservation()
-        return station.docks.filter {it.bike?.status == BikeState.AVAILABLE && it.status == DockState.OCCUPIED}.count() > 0
+        synchronized(station.lock) {
+            station.updateReservation()
+            return station.docks.filter { it.bike?.status == BikeState.AVAILABLE && it.status == DockState.OCCUPIED }
+                .count() > 0
+        }
     }
 
     override fun reserveBike(bike: Bicycle?): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        station.updateReservation()
-        if(station.aBikeIsReserved) return null
-        if(bike != null) {
-            if(station.docks.filter {it.bike?.id == bike.id}.count() < 1 || station.docks.filter {it.bike?.id == bike.id && it.bike!!.status != BikeState.AVAILABLE}.count() > 0) return null
-            station.aBikeIsReserved = true
-            val d = station.docks.filter {it.bike?.id == bike.id}.first()
-            d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
-            d.bike!!.statusTransitions.add(BikeStateTransition(bike.id, bike.status, BikeState.RESERVED, Instant.now()))
-            d.bike!!.status = BikeState.RESERVED
-        } else {
-            if(station.docks.filter {it.bike?.status == BikeState.AVAILABLE}.count() < 1) return null
-            station.aBikeIsReserved = true
-            val d = station.docks.filter {it.bike?.status == BikeState.AVAILABLE}.first()
-            d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
-            d.bike!!.statusTransitions.add(BikeStateTransition(d.bike!!.id, d.bike!!.status, BikeState.RESERVED, Instant.now()))
-            d.bike!!.status = BikeState.RESERVED
+        synchronized(station.lock) {
+            station.updateReservation()
+            if (station.aBikeIsReserved) return null
+            if (bike != null) {
+                if (station.docks.filter { it.bike?.id == bike.id }
+                        .count() < 1 || station.docks.filter { it.bike?.id == bike.id && it.bike!!.status != BikeState.AVAILABLE }
+                        .count() > 0) return fail
+                station.aBikeIsReserved = true
+                val d = station.docks.filter { it.bike?.id == bike.id }.first()
+                d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        bike.status,
+                        BikeState.RESERVED,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.RESERVED
+            } else {
+                if (station.docks.filter { it.bike?.status == BikeState.AVAILABLE }
+                        .count() < 1) return fail
+                station.aBikeIsReserved = true
+                val d = station.docks.filter { it.bike?.status == BikeState.AVAILABLE }.first()
+                d.bike!!.reservationExpiryTime = Instant.now().plus(station.reservationHoldTime)
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        d.bike!!.id,
+                        d.bike!!.status,
+                        BikeState.RESERVED,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.RESERVED
+            }
         }
         return ok
     }
 
     override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
         val fromReservation = fromReservation ?: false
 
-        station.updateReservation()
+        synchronized(station.lock) {
+            station.updateReservation()
 
-        if(fromReservation) {
-            if(station.docks.filter {it.bike?.id == bike.id && it.bike?.status == BikeState.RESERVED}.count() < 1) return null
-            station.aBikeIsReserved = false
+            if (fromReservation) {
+                if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.RESERVED }
+                        .count() < 1) return fail
+                station.aBikeIsReserved = false
 
-            val d = station.docks.filter {it.bike?.id == bike.id}.first()
-            d.bike!!.reservationExpiryTime = null
-            d.bike!!.statusTransitions.add(BikeStateTransition(bike.id, BikeState.RESERVED, BikeState.ON_TRIP, Instant.now()))
-            d.bike!!.status = BikeState.ON_TRIP
+                val d = station.docks.filter { it.bike?.id == bike.id }.first()
+                d.bike!!.reservationExpiryTime = null
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        BikeState.RESERVED,
+                        BikeState.ON_TRIP,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.ON_TRIP
 
-            d.status = DockState.EMPTY
-        } else {
-            if(station.docks.filter {it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE}.count() < 1) return null
+                d.status = DockState.EMPTY
+            } else {
+                if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE }
+                        .count() < 1) return fail
 
-            val d = station.docks.filter {it.bike?.id == bike.id}.first()
-            d.bike!!.reservationExpiryTime = null
-            d.bike!!.statusTransitions.add(BikeStateTransition(bike.id, BikeState.AVAILABLE, BikeState.ON_TRIP, Instant.now()))
-            d.bike!!.status = BikeState.ON_TRIP
+                val d = station.docks.filter { it.bike?.id == bike.id }.first()
+                d.bike!!.reservationExpiryTime = null
+                d.bike!!.statusTransitions.add(
+                    BikeStateTransition(
+                        bike.id,
+                        BikeState.AVAILABLE,
+                        BikeState.ON_TRIP,
+                        Instant.now()
+                    )
+                )
+                d.bike!!.status = BikeState.ON_TRIP
 
-            d.status = DockState.EMPTY
+                d.status = DockState.EMPTY
+            }
+
+            station.numFreeDocks++
+            station.numOccupiedDocks--
+            station.changeStationStatus(PartiallyFilled(station))
         }
-
-        station.numFreeDocks++
-        station.numOccupiedDocks--
-        station.changeStationStatus(PartiallyFilled(station))
         return ok
     }
 
@@ -445,25 +627,39 @@ class Full(override val station: DockingStation): DockingStationState {
 class OutOfService(override val station: DockingStation): DockingStationState {
     override fun setStation(station: DockingStation): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        if (station.status is PartiallyFilled || station.status is Full || station.status is Empty) {
-            return null
+        synchronized(station.lock) {
+            if (station.status is PartiallyFilled || station.status is Full || station.status is Empty) {
+                return fail
+            }
+            station.status = this
         }
-        station.status = this
         return ok
     }
     override fun changeStationStatus(status: DockingStationState): Unit? {
         val ok: Unit? = Unit
+        val fail: Unit? = null
 
-        if (station.docks.filter {it.status == DockState.OUT_OF_SERVICE}.count() >= station.docks.count() || station.stateChanges == null) {
-            return null
+        synchronized(station.lock) {
+            if (station.docks.filter { it.status == DockState.OUT_OF_SERVICE }
+                    .count() >= station.docks.count() || station.stateChanges == null) {
+                return fail
+            }
+            station.stateChanges!!.add(
+                DockingStationStateTransition(
+                    station.id,
+                    this,
+                    status,
+                    Instant.now()
+                )
+            )
+            station.status = status
         }
-        station.stateChanges!!.add(DockingStationStateTransition(station.id, this, status, Instant.now()))
-        station.status = status
         return ok
     }
 
-    override fun bikeIsAvailable(): Boolean? = false
+    override fun bikeIsAvailable(): Boolean? = null
 
     override fun reserveBike(bike: Bicycle?): Unit? = null
     override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = null
