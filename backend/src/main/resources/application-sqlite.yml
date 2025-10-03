@@ -1,8 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:sqlite:./build/sqlite/dev.db
-    driver-class-name: org.sqlite.JDBC
-  jpa:
-    hibernate:
-      ddl-auto: update
-    database-platform: org.hibernate.community.dialect.SQLiteDialect

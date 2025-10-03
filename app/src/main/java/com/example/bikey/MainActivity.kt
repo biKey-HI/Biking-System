@@ -1,47 +1,55 @@
+// This is the app entry point, and it sets the Compose content and a small NavHost (with startDestination = "register")
+// It immediately shows the Registration Screen (RegisterScreen)
 package com.example.bikey
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.bikey.ui.theme.BiKeyTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.bikey.ui.registration.RegisterScreen
+import com.example.bikey.ui.login.LoginScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            BiKeyTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            MaterialTheme {
+                Surface {
+                    val nav = rememberNavController()
+                    NavHost(
+                        navController = nav,
+                        startDestination = "register"
+                    ) {
+                        composable("register") {
+                            RegisterScreen(
+                                onRegistered = { email -> },
+                                onGoToLogin = {
+                                nav.navigate("login")
+                            }
+                            )
+                        }
+                        composable("login") {
+                            LoginScreen(onLoggedIn = { email ->
+
+                            })
+                            LoginScreen(
+                                onGoToRegister = {
+                                    nav.navigate("register")
+                                }
+                            )
+
+
+                        }
+                        // composable("home") { HomeScreen() }
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    BiKeyTheme {
-        Greeting("Android")
-    }
-}
