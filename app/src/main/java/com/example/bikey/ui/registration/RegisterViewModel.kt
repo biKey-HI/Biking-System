@@ -11,6 +11,9 @@ import com.example.bikey.ui.registration.model.RegisterRequest
 import com.example.bikey.ui.registration.model.UserRole
 import com.example.bikey.ui.network.AuthApi
 import com.example.bikey.ui.network.authApi
+import com.example.bikey.ui.registration.model.Province
+import com.example.bikey.ui.registration.model.AddressPayload
+import com.example.bikey.ui.registration.model.PaymentPayload
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +34,22 @@ data class RegisterUiState(
     val successEmail: String? = null,
     val successMessage: String? = null,
     val role: UserRole = UserRole.RIDER,
+
+    // (0=user, 1=address, 2=payment)
+    val step: Int = 0,
+
+
+    val addrLine1: String = "",
+    val addrLine2: String = "",
+    val addrCity: String = "",
+    val addrProvince: Province = Province.QC,
+    val addrPostal: String = "",
+    val addrCountry: String = "CA",
+
+
+    val payHolder: String = "",
+    val payCardNumber: String = "",
+    val payCvv3: String = ""
 )
 
 sealed class RegisterEvent {
@@ -61,9 +80,30 @@ private val _events = MutableSharedFlow<RegisterEvent>()
     fun onUsernameChange(v: String) = set { copy(username = v, error = null) }
     fun onRoleChange(r: UserRole) = set { copy(role = r, error = null) }
 
+    fun onAddrLine1Change(v: String) = set { copy(addrLine1 = v, error = null) }
+    fun onAddrLine2Change(v: String) = set { copy(addrLine2 = v, error = null) }
+    fun onAddrCityChange(v: String)  = set { copy(addrCity = v, error = null) }
+    fun onAddrProvinceChange(p: Province) = set { copy(addrProvince = p, error = null) }
+    fun onAddrPostalChange(v: String) = set { copy(addrPostal = v, error = null) }
+    fun onAddrCountryChange(v: String) = set { copy(addrCountry = v, error = null) }
+
+    fun onPayHolderChange(v: String) = set { copy(payHolder = v, error = null) }
+    fun onPayCardNumberChange(v: String) = set { copy(payCardNumber = v.filter { it.isDigit() }, error = null) }
+    fun onPayCvv3Change(v: String) = set { copy(payCvv3 = v.filter { it.isDigit() }.take(3), error = null) }
+
+    // nav helpers
+    fun next() = set { copy(step = (step + 1).coerceAtMost(2)) }
+    fun back() = set { copy(step = (step - 1).coerceAtLeast(0)) }
+
     fun submit() {
+
         Log.d("RegisterVM", "submit() tapped. email='${state.email}', firstname='${state.firstName}'," +
                 "lastname='${state.lastName}', usernamename='${state.username}', role='${state.role}'")
+
+        if (state.step < 2) {
+            next()
+            return
+        }
 
         val email = state.email.trim()
         val pwd = state.password
@@ -72,33 +112,64 @@ private val _events = MutableSharedFlow<RegisterEvent>()
         val usernamename = state.username.trim()
         val role = state.role
 
-
         if (!email.contains("@") || pwd.length < 8) {
             set { copy(error = "Invalid email or password < 8 characters") }
             Log.w("RegisterVM", "Client-side validation failed")
 
             return
         }
+
+        if (!email.contains("@") || pwd.length < 8) {
+            set { copy(error = "Invalid email or password < 8 characters") }
+            return
+        }
+
+        // Build new payloads from state
+        val address = AddressPayload(
+            line1 = state.addrLine1.trim(),
+            line2 = state.addrLine2.trim().ifEmpty { null },
+            city = state.addrCity.trim(),
+            province = state.addrProvince,
+            postalCode = state.addrPostal.trim(),
+            country = state.addrCountry.trim()
+        )
+
+        // If payment fields are blank, send null (skip)
+        val payment = if (state.payHolder.isBlank() && state.payCardNumber.isBlank() && state.payCvv3.isBlank()) {
+            null
+        } else {
+            PaymentPayload(
+                cardHolderName = state.payHolder.trim(),
+                cardNumber = state.payCardNumber.trim(),
+                cvv3 = state.payCvv3.trim()
+            )
+        }
+
         viewModelScope.launch {
             set { copy(isLoading = true, error = null, successEmail = null) }
             try {
                 // Use named params so there’s no ambiguity
                 Log.d("RegisterVM", "Calling API…")
                 val res = api.register(RegisterRequest(email = email, password = pwd, firstName = firstname,
-                    lastName = lastname, username = usernamename, role = role))
+                    lastName = lastname, username = usernamename, role = role, address = address,
+                    payment = payment))
                 if (res.isSuccessful) {
                     Log.i("RegisterVM", "SUCCESS ${res.code()} – will clear fields and set successMessage")
                     set {
                         copy(
                             isLoading = false,
                             successEmail = email,
-                            successMessage = "Successful Registration, $username ! Your account is ready.",
+                            successMessage = "Successful Registration, $usernamename ! Your account is ready.",
                             email = "",
                             password = "",
                             firstName = "",
                             lastName = "",
                             username = "",
                             role = UserRole.RIDER,
+                            step = 0,
+                            addrLine1 = "", addrLine2 = "", addrCity = "",
+                            addrProvince = Province.QC, addrPostal = "", addrCountry = "CA",
+                            payHolder = "", payCardNumber = "", payCvv3 = ""
                         )
                     }
                     _events.emit(RegisterEvent.Success(email))

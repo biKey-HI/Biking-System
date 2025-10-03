@@ -5,6 +5,11 @@ package org.example.app.auth
 
 import org.example.app.user.User
 import org.example.app.user.UserRepository
+import org.example.app.user.Province
+import org.example.app.user.Payment
+import org.example.app.user.Address
+import org.example.app.user.PaymentRepository
+import org.example.app.user.AddressRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.example.app.user.UserRole
@@ -13,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class AuthService(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val addressRepository: AddressRepository,
+    private val paymentRepository: PaymentRepository
 ) {
     private val encoder = BCryptPasswordEncoder()
 
@@ -24,6 +31,24 @@ class AuthService(
         if (userRepository.existsByUsername(req.username)) {
             throw UsernameAlreadyUsedException()
         }
+        val a = req.address
+        val address = addressRepository.findByLine1AndLine2AndCityAndProvinceAndPostalCodeAndCountry(
+            a.line1.trim(),
+            a.line2?.trim(),
+            a.city.trim(),
+            a.province,
+            a.postalCode.trim(),
+            a.country.trim()
+        ) ?: addressRepository.save(
+            Address(
+                line1 = a.line1.trim(),
+                line2 = a.line2?.trim(),
+                city = a.city.trim(),
+                province = a.province,
+                postalCode = a.postalCode.trim(),
+                country = a.country.trim()
+            )
+        )
         val user = userRepository.save(
             User(
                 email = req.email,
@@ -31,9 +56,30 @@ class AuthService(
                 firstName = req.firstName,
                 lastName = req.lastName,
                 username = req.username,
-                role = req.role
+                role = req.role,
+                address = address
             )
         )
+        // Optional: save payment if provided
+        req.payment?.let { p ->
+            val last4 = when {
+                !p.cardLast4.isNullOrBlank() -> p.cardLast4
+                !p.cardNumber.isNullOrBlank() -> p.cardNumber.filter(Char::isDigit).takeLast(4)
+                else -> null
+            }
+
+            paymentRepository.save(
+                Payment(
+                    user = user,
+                    cardHolderName = p.cardHolderName.trim(),
+                    provider = p.provider,
+                    token = p.token,
+                    cardBrand = p.cardBrand,
+                    cardLast4 = last4,
+                    cardNumberEnc = null
+                )
+            )
+        }
         return RegisterResponse(
             id = requireNotNull(user.id),
             email = user.email
