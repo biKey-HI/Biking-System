@@ -7,6 +7,7 @@ import org.example.app.user.User
 import org.example.app.user.UserRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
+import org.example.app.user.UserRole
 import org.springframework.transaction.annotation.Transactional
 
 
@@ -29,7 +30,8 @@ class AuthService(
                 passwordHash = encoder.encode(req.password),
                 firstName = req.firstName,
                 lastName = req.lastName,
-                username = req.username
+                username = req.username,
+                role = req.role
             )
         )
         return RegisterResponse(

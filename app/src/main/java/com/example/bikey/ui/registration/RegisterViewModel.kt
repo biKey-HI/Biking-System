@@ -8,6 +8,7 @@ package com.example.bikey.ui.registration
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bikey.ui.registration.model.RegisterRequest
+import com.example.bikey.ui.registration.model.UserRole
 import com.example.bikey.ui.network.AuthApi
 import com.example.bikey.ui.network.authApi
 import kotlinx.coroutines.launch
@@ -29,6 +30,7 @@ data class RegisterUiState(
     val error: String? = null,
     val successEmail: String? = null,
     val successMessage: String? = null,
+    val role: UserRole = UserRole.RIDER,
 )
 
 sealed class RegisterEvent {
@@ -57,16 +59,19 @@ private val _events = MutableSharedFlow<RegisterEvent>()
     fun onfirstNameChange(v: String) = set { copy(firstName = v, error = null) }
     fun onlastNameChange(v: String) = set { copy(lastName = v, error = null) }
     fun onUsernameChange(v: String) = set { copy(username = v, error = null) }
+    fun onRoleChange(r: UserRole) = set { copy(role = r, error = null) }
 
     fun submit() {
         Log.d("RegisterVM", "submit() tapped. email='${state.email}', firstname='${state.firstName}'," +
-                "lastname='${state.lastName}', usernamename='${state.username}'")
+                "lastname='${state.lastName}', usernamename='${state.username}', role='${state.role}'")
 
         val email = state.email.trim()
         val pwd = state.password
         val firstname = state.firstName.trim()
         val lastname = state.lastName.trim()
         val usernamename = state.username.trim()
+        val role = state.role
+
 
         if (!email.contains("@") || pwd.length < 8) {
             set { copy(error = "Invalid email or password < 8 characters") }
@@ -80,7 +85,7 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                 // Use named params so there’s no ambiguity
                 Log.d("RegisterVM", "Calling API…")
                 val res = api.register(RegisterRequest(email = email, password = pwd, firstName = firstname,
-                    lastName = lastname, username = usernamename))
+                    lastName = lastname, username = usernamename, role = role))
                 if (res.isSuccessful) {
                     Log.i("RegisterVM", "SUCCESS ${res.code()} – will clear fields and set successMessage")
                     set {
@@ -92,7 +97,8 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                             password = "",
                             firstName = "",
                             lastName = "",
-                            username = ""
+                            username = "",
+                            role = UserRole.RIDER,
                         )
                     }
                     _events.emit(RegisterEvent.Success(email))

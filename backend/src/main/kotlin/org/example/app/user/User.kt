@@ -3,6 +3,7 @@
 package org.example.app.user
 
 import jakarta.persistence.*
+import org.example.app.user.UserRole
 import java.time.Instant
 
 @Entity
@@ -31,6 +32,10 @@ class User(
     var username: String,
 
     @Column(nullable = false)
-    var createdAt: Instant = Instant.now()
+    var createdAt: Instant = Instant.now(),
+
+    @Enumerated(EnumType.STRING)
+@Column(name = "role", nullable = false)
+var role: UserRole = UserRole.RIDER // it always defaults to a rider
 )
 
