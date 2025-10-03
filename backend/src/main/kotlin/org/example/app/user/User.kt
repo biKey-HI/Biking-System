@@ -16,6 +16,15 @@ class User(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
 
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = [CascadeType.PERSIST, CascadeType.MERGE])
+    @JoinColumn(name = "address_id", nullable = false)
+    val address: Address,
+
+    // (only present if the rider provided payment info)
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    val payment: Payment? = null,
+
     @Column(nullable = false, length = 320)
     var email: String,
 
@@ -34,8 +43,9 @@ class User(
     @Column(nullable = false)
     var createdAt: Instant = Instant.now(),
 
+    // Role default to Rider
     @Enumerated(EnumType.STRING)
-@Column(name = "role", nullable = false)
-var role: UserRole = UserRole.RIDER // it always defaults to a rider
+    @Column(name = "role", nullable = false)
+    var role: UserRole = UserRole.RIDER // it always defaults to a rider
 )
 

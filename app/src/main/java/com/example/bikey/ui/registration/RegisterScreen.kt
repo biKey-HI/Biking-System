@@ -11,11 +11,18 @@ import androidx.compose.ui.Alignment
 import com.example.bikey.ui.registration.model.UserRole
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.example.bikey.ui.registration.model.Province
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.SnackbarDuration
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onGoToLogin: () -> Unit = {},
@@ -24,6 +31,8 @@ fun RegisterScreen(
 ) {
     val state = viewModel.state
     val snackbarHostState = remember { SnackbarHostState() }
+    var provinceMenuExpanded by remember { mutableStateOf(false) }
+    val provinces = remember { Province.values().toList() }
 
     LaunchedEffect(state.error) {
         state.error?.let { snackbarHostState.showSnackbar(it) }
@@ -74,6 +83,12 @@ fun RegisterScreen(
                 Text("Create an account", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(12.dp))
 
+                Text(
+                    text = "Step ${state.step + 1} of 3",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                if (state.step == 0) {
                 // First Name
                 OutlinedTextField(
                     value = state.firstName,
@@ -101,23 +116,25 @@ fun RegisterScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Choose role", style = MaterialTheme.typography.bodyLarge)
-                Row {
-                    RadioButton(
-                        selected = state.role == UserRole.RIDER,
-                        onClick = { viewModel.onRoleChange(UserRole.RIDER) }
-                    )
-                    Text("Rider", modifier = Modifier
-                        .padding(end = 16.dp)
-                        .clickable { viewModel.onRoleChange(UserRole.RIDER) })
-
-                    RadioButton(
-                        selected = state.role == UserRole.OPERATOR,
-                        onClick = { viewModel.onRoleChange(UserRole.OPERATOR) }
-                    )
-                    Text("Operator", modifier = Modifier
-                        .clickable { viewModel.onRoleChange(UserRole.OPERATOR) })
-                }
+//                Text("Choose role", style = MaterialTheme.typography.bodyLarge)
+//                Row {
+//                    RadioButton(
+//                        selected = state.role == UserRole.RIDER,
+//                        onClick = { viewModel.onRoleChange(UserRole.RIDER) }
+//                    )
+//                    Text(
+//                        "Rider", modifier = Modifier
+//                            .padding(end = 16.dp)
+//                            .clickable { viewModel.onRoleChange(UserRole.RIDER) })
+//
+//                    RadioButton(
+//                        selected = state.role == UserRole.OPERATOR,
+//                        onClick = { viewModel.onRoleChange(UserRole.OPERATOR) }
+//                    )
+//                    Text(
+//                        "Operator", modifier = Modifier
+//                            .clickable { viewModel.onRoleChange(UserRole.OPERATOR) })
+//                }
 
                 // Email
                 OutlinedTextField(
@@ -137,6 +154,108 @@ fun RegisterScreen(
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+                if (state.step == 1) {
+                    OutlinedTextField(
+                        value = state.addrLine1,
+                        onValueChange = viewModel::onAddrLine1Change,
+                        label = { Text("Address line 1") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = state.addrLine2,
+                        onValueChange = viewModel::onAddrLine2Change,
+                        label = { Text("Address line 2 (optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = state.addrCity,
+                        onValueChange = viewModel::onAddrCityChange,
+                        label = { Text("City") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Province dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = provinceMenuExpanded,
+                        onExpandedChange = { provinceMenuExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = state.addrProvince.name,
+                            onValueChange = {}, // read-only
+                            readOnly = true,
+                            label = { Text("Province") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = provinceMenuExpanded) },
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = provinceMenuExpanded,
+                            onDismissRequest = { provinceMenuExpanded = false }
+                        ) {
+                            provinces.forEach { p ->
+                                DropdownMenuItem(
+                                    text = { Text(p.name) },
+                                    onClick = {
+                                        viewModel.onAddrProvinceChange(p)
+                                        provinceMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = state.addrPostal,
+                        onValueChange = viewModel::onAddrPostalChange,
+                        label = { Text("Postal code") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = state.addrCountry,
+                        onValueChange = viewModel::onAddrCountryChange,
+                        label = { Text("Country") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                if (state.step == 2) {
+                    OutlinedTextField(
+                        value = state.payHolder,
+                        onValueChange = viewModel::onPayHolderChange,
+                        label = { Text("Card holder name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = state.payCardNumber,
+                        onValueChange = viewModel::onPayCardNumberChange,
+                        label = { Text("Card number") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = state.payCvv3,
+                        onValueChange = viewModel::onPayCvv3Change,
+                        label = { Text("CVV") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = "Tip: Leave all payment fields blank to skip.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
 
                 Text(
                     text = "Already have an account? Log in",
@@ -169,7 +288,7 @@ fun RegisterScreen(
                         )
                         Text("Registering…")
                     } else {
-                        Text("Register")
+                        Text(if (state.step < 2) "Next" else "Register")
                     }
                 }
             }
