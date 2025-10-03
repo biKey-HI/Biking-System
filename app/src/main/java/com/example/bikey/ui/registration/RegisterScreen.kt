@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import com.example.bikey.ui.registration.model.UserRole
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -99,6 +101,24 @@ fun RegisterScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                Text("Choose role", style = MaterialTheme.typography.bodyLarge)
+                Row {
+                    RadioButton(
+                        selected = state.role == UserRole.RIDER,
+                        onClick = { viewModel.onRoleChange(UserRole.RIDER) }
+                    )
+                    Text("Rider", modifier = Modifier
+                        .padding(end = 16.dp)
+                        .clickable { viewModel.onRoleChange(UserRole.RIDER) })
+
+                    RadioButton(
+                        selected = state.role == UserRole.OPERATOR,
+                        onClick = { viewModel.onRoleChange(UserRole.OPERATOR) }
+                    )
+                    Text("Operator", modifier = Modifier
+                        .clickable { viewModel.onRoleChange(UserRole.OPERATOR) })
+                }
+
                 // Email
                 OutlinedTextField(
                     value = state.email,
@@ -117,6 +137,15 @@ fun RegisterScreen(
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Text(
+                    text = "Already have an account? Log in",
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clickable { onGoToLogin() }
+                )
+                Spacer(Modifier.height(8.dp))
 
                 if (!state.error.isNullOrBlank()) {
                     Text(

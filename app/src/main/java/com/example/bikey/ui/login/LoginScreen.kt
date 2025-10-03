@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -11,6 +12,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
+    onGoToRegister: () -> Unit = {},
     onLoggedIn: (String) -> Unit = {},
     vm: LoginViewModel = viewModel()
 ) {
@@ -71,6 +73,15 @@ fun LoginScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Text(
+                    text = "Don't have an account yet? Register",
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clickable { onGoToRegister() }
+                )
+                Spacer(Modifier.height(8.dp))
 
                 if (!state.errorMsg.isNullOrBlank()) {
                     Text(

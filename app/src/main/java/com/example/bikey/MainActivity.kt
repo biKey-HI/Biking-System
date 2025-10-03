@@ -36,6 +36,12 @@ class MainActivity : ComponentActivity() {
                             LoginScreen(onLoggedIn = { email ->
 
                             })
+                            LoginScreen(
+                                onGoToRegister = {
+                                    nav.navigate("register")
+                                }
+                            )
+
 
                         }
                         // composable("home") { HomeScreen() }
