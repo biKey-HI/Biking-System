@@ -8,6 +8,9 @@ import com.google.android.gms.maps.model.LatLng
 import android.location.Geocoder
 import android.content.Context
 
+val ok: Unit? = Unit
+val fail = null
+
 // -- DOCKING STATIONS -- \\
 
 data class DockingStation(val id: UUID = UUID.randomUUID(),
@@ -22,12 +25,13 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     var aBikeIsReserved: Boolean = false, // Reservation truth not guaranteed when accessed directly; use updateReservation() first
     var reservationHoldTime: Duration = Duration.ofMinutes(10),
     var stateChanges: MutableList<DockingStationStateTransition>?,
-    var dashboard: Dashboard? = null,
+    var dashboard: Dashboard = Dashboard(),
     var docks: MutableList<Dock> = MutableList(capacity) {Dock()} // Reservation truth not guaranteed when accessed directly; use updateReservation() first
     // Always include a docks list unless the station's docks are all empty
 ) {
     val lock = Any()
-    constructor(name: String? = null,
+    constructor(id: UUID = UUID.randomUUID(),
+    name: String? = null,
     address: Address? = null,
     location: LatLng? = null,
     context: Context? = null,
@@ -38,9 +42,9 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     aBikeIsReserved: Boolean = false,
     reservationHoldTime: Duration = Duration.ofMinutes(10),
     stateChanges: MutableList<DockingStationStateTransition>? = null,
-    dashboard: Dashboard? = null,
+    dashboard: Dashboard = Dashboard(),
     docks: MutableList<Dock>? = null
-    ) : this(id = UUID.randomUUID(),
+    ) : this(id = id,
         name = name ?: "",
         address = address ?: Address(number = 0, street = "", postalCode = ""),
         location = location ?: LatLng(0.0,0.0),
@@ -139,9 +143,6 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         }
         if(name == "") this.name = "${this.address.number} ${this.address.street}"
         if(context != null) this.context = context
-
-        if(this.dashboard == null) this.dashboard = Dashboard()
-        require(this.dashboard != null) {"A docking station must have a dashboard."}
     }
     // Below: null values indicate failure: it does not make sense to call it
     fun bikeIsAvailable(): Boolean? = status?.bikeIsAvailable()
@@ -151,8 +152,6 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     fun reserveBike(bike: Bicycle?): Unit? = status?.reserveBike(bike)
 
     fun updateReservation(): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
         synchronized(lock) {
             if (aBikeIsReserved) {
                 val reservedDock = docks.filter { it.bike?.status == BikeState.RESERVED }.firstOrNull()
@@ -179,8 +178,6 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
 
     companion object { // Only called by operators, not cyclists
         fun moveBike(bike: Bicycle, fromStation: DockingStation, toStation: DockingStation, toDockId: UUID? = null): Boolean? { // 3-level return indicators:
-            val fail = null
-            
             val (first, second) = if(fromStation.id < toStation.id) fromStation to toStation else toStation to fromStation // Little trick to prevent deadlocks
             synchronized(first.lock) {
                 synchronized(second.lock) {
@@ -208,8 +205,8 @@ interface DockingStationState {
 }
 
 class Empty(override val station: DockingStation): DockingStationState {
-    val ok: Unit? = Unit
-    val fail: Unit? = null
+    override fun toString(): String = "Empty"
+
     override fun setStation(station: DockingStation): Unit? {
         synchronized(station.lock) {
             if (station.status is Full || station.status is OutOfService || station.status is PartiallyFilled) {
@@ -220,7 +217,6 @@ class Empty(override val station: DockingStation): DockingStationState {
         return ok
     }
     override fun changeStationStatus(status: DockingStationState): Unit? {
-        val ok: Unit? = Unit
         synchronized(station.lock) {
             if (station.docks.filter { it.status == DockState.OCCUPIED }.count() < 1) {
                 return fail
@@ -240,12 +236,9 @@ class Empty(override val station: DockingStation): DockingStationState {
 
     override fun bikeIsAvailable(): Boolean? = false
 
-    override fun reserveBike(bike: Bicycle?): Unit? = null
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = null
+    override fun reserveBike(bike: Bicycle?): Unit? = fail
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = fail
     override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             if (bike.status != BikeState.ON_TRIP) return fail
             if (dockId != null && station.docks.firstOrNull { it.id == dockId } == null) return fail
@@ -279,10 +272,9 @@ class Empty(override val station: DockingStation): DockingStationState {
 }
 
 class PartiallyFilled(override val station: DockingStation): DockingStationState {
-    override fun setStation(station: DockingStation): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
+    override fun toString(): String = "Partially Filled"
 
+    override fun setStation(station: DockingStation): Unit? {
         synchronized(station.lock) {
             if (station.status is Full || station.status is OutOfService || station.status is Empty) {
                 return fail
@@ -293,9 +285,6 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
     }
 
     override fun changeStationStatus(status: DockingStationState): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             if (station.docks.filter { it.status == DockState.OCCUPIED }
                     .count() > 0 && station.docks.filter { it.status == DockState.EMPTY }
@@ -324,9 +313,6 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
     }
 
     override fun reserveBike(bike: Bicycle?): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             station.updateReservation()
             if (station.aBikeIsReserved) return fail
@@ -368,9 +354,6 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
     }
 
     override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         val fromReservation = fromReservation ?: false
 
         synchronized(station.lock) {
@@ -421,9 +404,6 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
     }
 
     override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             station.updateReservation()
 
@@ -482,11 +462,9 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
 }
 
 class Full(override val station: DockingStation): DockingStationState {
+    override fun toString(): String = "Full"
 
     override fun setStation(station: DockingStation): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             if (station.status is PartiallyFilled || station.status is OutOfService || station.status is Empty) {
                 return fail
@@ -497,9 +475,6 @@ class Full(override val station: DockingStation): DockingStationState {
     }
 
     override fun changeStationStatus(status: DockingStationState): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             if (station.docks.filter { it.status == DockState.EMPTY }.count() > 0) {
                 return fail
@@ -526,9 +501,6 @@ class Full(override val station: DockingStation): DockingStationState {
     }
 
     override fun reserveBike(bike: Bicycle?): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             station.updateReservation()
             if (station.aBikeIsReserved) return null
@@ -569,9 +541,6 @@ class Full(override val station: DockingStation): DockingStationState {
     }
 
     override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         val fromReservation = fromReservation ?: false
 
         synchronized(station.lock) {
@@ -621,14 +590,11 @@ class Full(override val station: DockingStation): DockingStationState {
         return ok
     }
 
-    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? = null
+    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? = fail
 }
 
 class OutOfService(override val station: DockingStation): DockingStationState {
     override fun setStation(station: DockingStation): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             if (station.status is PartiallyFilled || station.status is Full || station.status is Empty) {
                 return fail
@@ -638,9 +604,6 @@ class OutOfService(override val station: DockingStation): DockingStationState {
         return ok
     }
     override fun changeStationStatus(status: DockingStationState): Unit? {
-        val ok: Unit? = Unit
-        val fail: Unit? = null
-
         synchronized(station.lock) {
             if (station.docks.filter { it.status == DockState.OUT_OF_SERVICE }
                     .count() >= station.docks.count() || station.stateChanges == null) {
@@ -659,11 +622,11 @@ class OutOfService(override val station: DockingStation): DockingStationState {
         return ok
     }
 
-    override fun bikeIsAvailable(): Boolean? = null
+    override fun bikeIsAvailable(): Boolean? = fail
 
-    override fun reserveBike(bike: Bicycle?): Unit? = null
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = null
-    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? = null
+    override fun reserveBike(bike: Bicycle?): Unit? = fail
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = fail
+    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? = fail
 }
 
 
@@ -699,7 +662,7 @@ data class Address(
     val provinceCode: String = "QC",
     val country: String = "Canada"
 ) {
-    constructor(address: String) : this(
+    constructor(address: String) : this( // You can input an address in text format
         number = address.substringBefore(" ").toInt(),
         street = address.substringAfter(" ").substringBefore(",").trim(),
         apartment = address.substringAfter("Apt", "").takeIf {it.isNotBlank()}?.trim(),
