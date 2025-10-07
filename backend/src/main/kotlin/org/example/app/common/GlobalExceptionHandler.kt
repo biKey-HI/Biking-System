@@ -1,6 +1,9 @@
+// Central error handler: On validation errors (missing/invalid fields) → returns 400 with a JSON
+// like: {"message":"Validation failed","errors":{"field":"message"}}
+//On duplicate email → returns 409 with {"message":"EMAIL_IN_USE"}.
 package org.example.app.common
 
-import org.example.app.user.EmailAlreadyUsedException
+import org.example.app.auth.EmailAlreadyUsedException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -17,5 +20,5 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyUsedException::class)
     fun onDuplicateEmail(ex: EmailAlreadyUsedException) =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("message" to ex.message))
+        ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("message" to (ex.message ?: "EMAIL_IN_USE")))
 }
