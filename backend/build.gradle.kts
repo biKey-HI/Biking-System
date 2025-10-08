@@ -20,6 +20,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
+    //to send an email
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     // JPA + SQLite
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.hibernate.orm:hibernate-community-dialects:6.5.2.Final")

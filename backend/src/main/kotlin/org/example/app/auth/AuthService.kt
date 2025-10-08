@@ -10,20 +10,47 @@ import org.example.app.user.Payment
 import org.example.app.user.Address
 import org.example.app.user.PaymentRepository
 import org.example.app.user.AddressRepository
+import org.example.app.user.PasswordResetToken
+import org.example.app.user.PasswordResetTokenRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.example.app.user.UserRole
 import org.springframework.transaction.annotation.Transactional
-
+import java.time.LocalDateTime
+import java.util.UUID
 
 @Service
 class AuthService(
     private val userRepository: UserRepository,
     private val addressRepository: AddressRepository,
-    private val paymentRepository: PaymentRepository
+    private val paymentRepository: PaymentRepository,
+    private val passwordResetTokenRepository: PasswordResetTokenRepository,
+    private val emailService: EmailService
 ) {
     private val encoder = BCryptPasswordEncoder()
 
+    fun sendPasswordResetLink(email:String){
+        //find the email first
+        val user = userRepository.findByEmail(email.trim()) ?:return  //this fails without notifying for security
+
+        //generate reset token
+        val resetToken = UUID.randomUUID().toString()
+        val expiryTime = LocalDateTime.now().plusHours(1)
+
+        //save token in cache for now
+        passwordResetTokenRepository.save(
+            PasswordResetToken(
+                token = resetToken,
+                user=user,
+                expiryDate = expiryTime
+            )
+        )
+
+        //send email with reset link
+        val resetLink = "https://yourapp.com/reset-password?token=$resetToken"
+        emailService.sendPasswordResetEmail(user.email, resetLink)
+
+    }
     fun register(req: RegisterRequest): RegisterResponse {
         if (userRepository.existsByEmail(req.email)) {
             throw EmailAlreadyUsedException()

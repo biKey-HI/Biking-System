@@ -21,4 +21,16 @@ class AuthController(
     @PostMapping("/login")
     fun login(@Valid @RequestBody req: LoginRequest): LoginResponse =
         authService.login(req)
+
+    @PostMapping("/forgot-password")
+    fun forgotPassword(@RequestBody req: ForgotPasswordRequest): ResponseEntity<String> {
+        authService.sendPasswordResetLink(req.email)
+        return ResponseEntity.ok("Password reset link sent")
+    }
+
+    @PostMapping("/reset-password")
+    fun resetPassword(@RequestBody req:ResetPasswordRequest): ResponseEntity<String> {
+        authService.resetPassword(request.token, request.newPassword)
+        return ResponseEntity.ok("Password has been reset")
+    }
 }
