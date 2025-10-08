@@ -23,6 +23,7 @@ dependencies {
     //to send an email
     implementation("org.springframework.boot:spring-boot-starter-mail")
 
+
     // JPA + SQLite
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.hibernate.orm:hibernate-community-dialects:6.5.2.Final")

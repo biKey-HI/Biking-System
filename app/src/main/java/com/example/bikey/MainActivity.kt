@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.bikey.ui.registration.RegisterScreen
 import com.example.bikey.ui.login.LoginScreen
+import com.example.bikey.ui.forgotpassword.ForgotPasswordScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,10 +40,21 @@ class MainActivity : ComponentActivity() {
                             LoginScreen(
                                 onGoToRegister = {
                                     nav.navigate("register")
+                                },
+                                onForgotPassword = {
+                                    nav.navigate("forgotPassword")
                                 }
+
                             )
 
 
+                        }
+                        composable("forgotPassword") {
+                            ForgotPasswordScreen(
+                                onBackToLogin = {
+                                    nav.popBackStack()
+                                }
+                            )
                         }
                         // composable("home") { HomeScreen() }
                     }

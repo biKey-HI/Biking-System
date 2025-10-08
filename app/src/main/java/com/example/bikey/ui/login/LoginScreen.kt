@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun LoginScreen(
     onGoToRegister: () -> Unit = {},
     onLoggedIn: (String) -> Unit = {},
+    onForgotPassword: () -> Unit = {},
     vm: LoginViewModel = viewModel()
 ) {
     val state = vm.state
@@ -73,6 +74,15 @@ fun LoginScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Text(
+                    text = "Forgot Password?",
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clickable { onForgotPassword() }
+                )
+
 
                 Text(
                     text = "Don't have an account yet? Register",

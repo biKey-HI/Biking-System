@@ -29,27 +29,41 @@ class AuthService(
 ) {
     private val encoder = BCryptPasswordEncoder()
 
-    fun sendPasswordResetLink(email:String){
-        //find the email first
-        val user = userRepository.findByEmail(email.trim()) ?:return  //this fails without notifying for security
+    fun sendPasswordResetLink(request: ForgotPasswordRequest): ForgotPasswordResponse {
+        val user = userRepository.findByEmail(request.email.trim()) ?: return ForgotPasswordResponse()
 
-        //generate reset token
         val resetToken = UUID.randomUUID().toString()
         val expiryTime = LocalDateTime.now().plusHours(1)
 
-        //save token in cache for now
         passwordResetTokenRepository.save(
             PasswordResetToken(
                 token = resetToken,
-                user=user,
+                user = user,
                 expiryDate = expiryTime
             )
         )
 
-        //send email with reset link
         val resetLink = "https://yourapp.com/reset-password?token=$resetToken"
         emailService.sendPasswordResetEmail(user.email, resetLink)
 
+        return ForgotPasswordResponse()
+    }
+
+    fun resetPassword(request: ResetPasswordRequest): ResetPasswordResponse {
+        val resetToken = passwordResetTokenRepository.findByToken(request.token)
+            ?: throw InvalidResetTokenException()
+
+        if (resetToken.expiryDate.isBefore(LocalDateTime.now())) {
+            throw ExpiredResetTokenException()
+        }
+
+        val user = resetToken.user
+        user.passwordHash = encoder.encode(request.newPassword)
+        userRepository.save(user)
+
+        passwordResetTokenRepository.delete(resetToken)
+
+        return ResetPasswordResponse()
     }
     fun register(req: RegisterRequest): RegisterResponse {
         if (userRepository.existsByEmail(req.email)) {
@@ -141,3 +155,6 @@ class UsernameAlreadyUsedException :
 
 class InvalidCredentialsException :
     RuntimeException("INVALID_CREDENTIALS: Email or password is incorrect.")
+
+class InvalidResetTokenException : RuntimeException("INVALID_TOKEN: Reset token is invalid.")
+class ExpiredResetTokenException : RuntimeException("EXPIRED_TOKEN: Reset token has expired.")

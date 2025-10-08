@@ -6,6 +6,7 @@ package org.example.app.auth
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import org.springframework.http.ResponseEntity
 
 @RestController
 @RequestMapping("/api/auth")
@@ -23,14 +24,14 @@ class AuthController(
         authService.login(req)
 
     @PostMapping("/forgot-password")
-    fun forgotPassword(@RequestBody req: ForgotPasswordRequest): ResponseEntity<String> {
-        authService.sendPasswordResetLink(req.email)
-        return ResponseEntity.ok("Password reset link sent")
+    fun forgotPassword(@RequestBody req: ForgotPasswordRequest): ResponseEntity<ForgotPasswordResponse> {
+        val response = authService.sendPasswordResetLink(req)
+        return ResponseEntity.ok(response)
     }
 
     @PostMapping("/reset-password")
-    fun resetPassword(@RequestBody req:ResetPasswordRequest): ResponseEntity<String> {
-        authService.resetPassword(request.token, request.newPassword)
-        return ResponseEntity.ok("Password has been reset")
+    fun resetPassword(@RequestBody req: ResetPasswordRequest): ResponseEntity<ResetPasswordResponse> {
+        val response = authService.resetPassword(req)
+        return ResponseEntity.ok(response)
     }
 }

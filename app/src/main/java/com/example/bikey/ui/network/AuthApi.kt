@@ -5,6 +5,8 @@ import com.example.bikey.ui.registration.model.RegisterRequest
 import com.example.bikey.ui.registration.model.RegisterResponse
 import com.example.bikey.ui.login.model.LoginRequest
 import com.example.bikey.ui.login.model.LoginResponse
+import com.example.bikey.ui.forgotpassword.model.ForgotPasswordRequest
+import com.example.bikey.ui.forgotpassword.model.ForgotPasswordResponse
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -22,6 +24,9 @@ interface AuthApi {
 
     @POST("/api/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    @POST("/api/auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<ForgotPasswordResponse>
 }
 
 // A small Retrofit provider (or move this to a DI module)
