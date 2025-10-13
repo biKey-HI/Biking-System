@@ -93,103 +93,106 @@ private val _events = MutableSharedFlow<RegisterEvent>()
 
     // nav helpers
     fun next() = set { copy(step = (step + 1).coerceAtMost(2)) }
-    fun back() = set { copy(step = (step - 1).coerceAtLeast(0)) }
+    fun previousStep() = set { copy(step = (step - 1).coerceAtLeast(0)) }
 
     fun submit() {
-
         Log.d("RegisterVM", "submit() tapped. email='${state.email}', firstname='${state.firstName}'," +
-                "lastname='${state.lastName}', usernamename='${state.username}', role='${state.role}'")
-
-        if (state.step < 2) {
-            next()
-            return
-        }
+                "lastname='${state.lastName}', username='${state.username}', role='${state.role}'")
 
         val email = state.email.trim()
         val pwd = state.password
         val firstname = state.firstName.trim()
         val lastname = state.lastName.trim()
-        val usernamename = state.username.trim()
+        val username = state.username.trim()
         val role = state.role
 
-        if (!email.contains("@") || pwd.length < 8) {
-            set { copy(error = "Invalid email or password < 8 characters") }
-            Log.w("RegisterVM", "Client-side validation failed")
-
+        // Basic validation
+        if (email.isBlank() || !email.contains("@")) {
+            set { copy(error = "Please enter a valid email address") }
             return
         }
 
-        if (!email.contains("@") || pwd.length < 8) {
-            set { copy(error = "Invalid email or password < 8 characters") }
+        if (pwd.length < 8) {
+            set { copy(error = "Password must be at least 8 characters") }
             return
         }
 
-        // Build new payloads from state
+        if (firstname.isBlank()) {
+            set { copy(error = "Please enter your first name") }
+            return
+        }
+
+        if (lastname.isBlank()) {
+            set { copy(error = "Please enter your last name") }
+            return
+        }
+
+        if (username.isBlank()) {
+            set { copy(error = "Please enter a username") }
+            return
+        }
+
+        // Create minimal address and payment (can be empty for simplified registration)
         val address = AddressPayload(
-            line1 = state.addrLine1.trim(),
-            line2 = state.addrLine2.trim().ifEmpty { null },
-            city = state.addrCity.trim(),
-            province = state.addrProvince,
-            postalCode = state.addrPostal.trim(),
-            country = state.addrCountry.trim()
+            line1 = "",
+            line2 = null,
+            city = "",
+            province = Province.QC,
+            postalCode = "",
+            country = "CA"
         )
-
-        // If payment fields are blank, send null (skip)
-        val payment = if (state.payHolder.isBlank() && state.payCardNumber.isBlank() && state.payCvv3.isBlank()) {
-            null
-        } else {
-            PaymentPayload(
-                cardHolderName = state.payHolder.trim(),
-                cardNumber = state.payCardNumber.trim(),
-                cvv3 = state.payCvv3.trim()
-            )
-        }
 
         viewModelScope.launch {
             set { copy(isLoading = true, error = null, successEmail = null) }
             try {
-                // Use named params so there’s no ambiguity
                 Log.d("RegisterVM", "Calling API…")
-                val res = api.register(RegisterRequest(email = email, password = pwd, firstName = firstname,
-                    lastName = lastname, username = usernamename, role = role, address = address,
-                    payment = payment))
+                val res = api.register(RegisterRequest(
+                    email = email,
+                    password = pwd,
+                    firstName = firstname,
+                    lastName = lastname,
+                    username = username,
+                    role = role,
+                    address = address,
+                    payment = null
+                ))
+
                 if (res.isSuccessful) {
-                    Log.i("RegisterVM", "SUCCESS ${res.code()} – will clear fields and set successMessage")
+                    Log.i("RegisterVM", "SUCCESS ${res.code()} – registration complete")
                     set {
                         copy(
                             isLoading = false,
                             successEmail = email,
-                            successMessage = "Successful Registration, $usernamename ! Your account is ready.",
+                            successMessage = "Welcome to BiKey, $username! Your account is ready.",
                             email = "",
                             password = "",
                             firstName = "",
                             lastName = "",
                             username = "",
-                            role = UserRole.RIDER,
-                            step = 0,
-                            addrLine1 = "", addrLine2 = "", addrCity = "",
-                            addrProvince = Province.QC, addrPostal = "", addrCountry = "CA",
-                            payHolder = "", payCardNumber = "", payCvv3 = ""
+                            role = UserRole.RIDER
                         )
                     }
                     _events.emit(RegisterEvent.Success(email))
                 } else if (res.code() == 409) {
-                    set { copy(isLoading = false, error = "Account exists. Please log in.") }
+                    set { copy(isLoading = false, error = "Account already exists. Please log in instead.") }
                     _events.emit(RegisterEvent.EmailInUse)
                 } else {
                     val errorBody = res.errorBody()?.string().orEmpty()
                     val msg = buildString {
-                        append("HTTP ${res.code()} ${res.message()}")
-                        if (errorBody.isNotBlank()) append(": $errorBody")
+                        append("Registration failed: HTTP ${res.code()}")
+                        if (errorBody.isNotBlank()) append(" - $errorBody")
                     }
-                    // debug log to Logcat
                     Log.e("RegisterViewModel", "Registration failed: $msg")
                     set { copy(isLoading = false, error = msg) }
                     _events.emit(RegisterEvent.Failure(msg))
                 }
             } catch (e: Exception) {
                 Log.e("RegisterVM", "EXCEPTION during register", e)
-                val msg = if (e.message?.contains("409") == true) "Email already used" else "Error: ${e.message}"
+                val msg = if (e.message?.contains("409") == true) {
+                    "Email already registered. Please log in instead."
+                } else {
+                    "Registration failed: ${e.message ?: "Unknown error"}"
+                }
                 set { copy(isLoading = false, error = msg) }
                 _events.emit(RegisterEvent.Failure(msg))
             }

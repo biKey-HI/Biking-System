@@ -16,9 +16,7 @@ data class RegisterRequest(
     @field:NotBlank @field:Size(max = 120) val lastName: String,
     @field:NotBlank @field:Size(max = 120) val username: String,
     val address: AddressPayload,
-    val payment: PaymentPayload? = null,
-
-    val role: UserRole = UserRole.RIDER
+    val payment: PaymentPayload? = null
 )
 
 data class RegisterResponse(
