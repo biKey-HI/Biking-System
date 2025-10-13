@@ -1,38 +1,41 @@
 // This is the registration form's UI. It creates/gets a RegisterViewModel, then displays text
 // fields for email and password, a submit button, and reacts to state (loading, error, success).
 // Then, on success, it calls the onRegistered(email) callback
-// (so MainActivity can navigate, e.g., to “home” later).
+// (so MainActivity can navigate, e.g., to "home" later).
 package com.example.bikey.ui.registration
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import com.example.bikey.ui.registration.model.UserRole
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
-import com.example.bikey.ui.registration.model.Province
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material3.SnackbarDuration
+import com.example.bikey.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onGoToLogin: () -> Unit = {},
+    onGoBack: () -> Unit = {},
     onRegistered: (String) -> Unit = {},
     viewModel: RegisterViewModel = viewModel()
 ) {
     val state = viewModel.state
     val snackbarHostState = remember { SnackbarHostState() }
-    var provinceMenuExpanded by remember { mutableStateOf(false) }
-    val provinces = remember { Province.values().toList() }
 
     LaunchedEffect(state.error) {
         state.error?.let { snackbarHostState.showSnackbar(it) }
@@ -65,234 +68,281 @@ fun RegisterScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { innerPadding ->
-        Box(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        LightGreen.copy(alpha = 0.1f),
+                        PureWhite,
+                        MintLight.copy(alpha = 0.3f)
+                    )
+                )
+            )
+    ) {
+        // Back button
+        IconButton(
+            onClick = onGoBack,
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back to Welcome",
+                tint = EcoGreen
+            )
+        }
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+                .padding(top = 64.dp, start = 32.dp, end = 32.dp, bottom = 32.dp)
+                .verticalScroll(rememberScrollState()), // Make column scrollable
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp)),
+                colors = CardDefaults.cardColors(
+                    containerColor = PureWhite
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 8.dp
+                )
             ) {
-                Text("Create an account", style = MaterialTheme.typography.headlineMedium)
-                Spacer(Modifier.height(12.dp))
-
-                Text(
-                    text = "Step ${state.step + 1} of 3",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                if (state.step == 0) {
-                // First Name
-                OutlinedTextField(
-                    value = state.firstName,
-                    onValueChange = viewModel::onfirstNameChange,
-                    label = { Text("First name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Last Name
-                OutlinedTextField(
-                    value = state.lastName,
-                    onValueChange = viewModel::onlastNameChange,
-                    label = { Text("Last name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Username
-                OutlinedTextField(
-                    value = state.username,
-                    onValueChange = viewModel::onUsernameChange,
-                    label = { Text("Username") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-//                Text("Choose role", style = MaterialTheme.typography.bodyLarge)
-//                Row {
-//                    RadioButton(
-//                        selected = state.role == UserRole.RIDER,
-//                        onClick = { viewModel.onRoleChange(UserRole.RIDER) }
-//                    )
-//                    Text(
-//                        "Rider", modifier = Modifier
-//                            .padding(end = 16.dp)
-//                            .clickable { viewModel.onRoleChange(UserRole.RIDER) })
-//
-//                    RadioButton(
-//                        selected = state.role == UserRole.OPERATOR,
-//                        onClick = { viewModel.onRoleChange(UserRole.OPERATOR) }
-//                    )
-//                    Text(
-//                        "Operator", modifier = Modifier
-//                            .clickable { viewModel.onRoleChange(UserRole.OPERATOR) })
-//                }
-
-                // Email
-                OutlinedTextField(
-                    value = state.email,
-                    onValueChange = viewModel::onEmailChange,
-                    label = { Text("Email") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Password
-                OutlinedTextField(
-                    value = state.password,
-                    onValueChange = viewModel::onPasswordChange,
-                    label = { Text("Password (min 8)") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-                if (state.step == 1) {
-                    OutlinedTextField(
-                        value = state.addrLine1,
-                        onValueChange = viewModel::onAddrLine1Change,
-                        label = { Text("Address line 1") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.addrLine2,
-                        onValueChange = viewModel::onAddrLine2Change,
-                        label = { Text("Address line 2 (optional)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.addrCity,
-                        onValueChange = viewModel::onAddrCityChange,
-                        label = { Text("City") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Title section
+                    Text(
+                        text = "Create Account",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = EcoGreen
+                        ),
+                        textAlign = TextAlign.Center
                     )
 
-                    // Province dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = provinceMenuExpanded,
-                        onExpandedChange = { provinceMenuExpanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = state.addrProvince.name,
-                            onValueChange = {}, // read-only
-                            readOnly = true,
-                            label = { Text("Province") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = provinceMenuExpanded) },
-                            modifier = Modifier
-                                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                                .fillMaxWidth()
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Join BiKey for eco-friendly biking",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // First Name input
+                    OutlinedTextField(
+                        value = state.firstName,
+                        onValueChange = viewModel::onfirstNameChange,
+                        label = { Text("First Name") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "First Name",
+                                tint = EcoGreen
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EcoGreen,
+                            focusedLabelColor = EcoGreen
                         )
-                        ExposedDropdownMenu(
-                            expanded = provinceMenuExpanded,
-                            onDismissRequest = { provinceMenuExpanded = false }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Last Name input
+                    OutlinedTextField(
+                        value = state.lastName,
+                        onValueChange = viewModel::onlastNameChange,
+                        label = { Text("Last Name") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Last Name",
+                                tint = EcoGreen
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EcoGreen,
+                            focusedLabelColor = EcoGreen
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Username input
+                    OutlinedTextField(
+                        value = state.username,
+                        onValueChange = viewModel::onUsernameChange,
+                        label = { Text("Username") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Username",
+                                tint = EcoGreen
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EcoGreen,
+                            focusedLabelColor = EcoGreen
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Email input
+                    OutlinedTextField(
+                        value = state.email,
+                        onValueChange = viewModel::onEmailChange,
+                        label = { Text("Email Address") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = "Email",
+                                tint = EcoGreen
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EcoGreen,
+                            focusedLabelColor = EcoGreen
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Password input
+                    OutlinedTextField(
+                        value = state.password,
+                        onValueChange = viewModel::onPasswordChange,
+                        label = { Text("Password (min 8 characters)") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Password",
+                                tint = EcoGreen
+                            )
+                        },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EcoGreen,
+                            focusedLabelColor = EcoGreen
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Error message
+                    if (!state.error.isNullOrBlank()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            provinces.forEach { p ->
-                                DropdownMenuItem(
-                                    text = { Text(p.name) },
-                                    onClick = {
-                                        viewModel.onAddrProvinceChange(p)
-                                        provinceMenuExpanded = false
-                                    }
-                                )
-                            }
+                            Text(
+                                text = state.error ?: "",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // Register button
+                    Button(
+                        onClick = viewModel::submit,
+                        enabled = !state.isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EcoGreen
+                        )
+                    ) {
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = PureWhite
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Creating account...",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = PureWhite
+                            )
+                        } else {
+                            Text(
+                                "Create Account",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = PureWhite
+                            )
                         }
                     }
 
-                    OutlinedTextField(
-                        value = state.addrPostal,
-                        onValueChange = viewModel::onAddrPostalChange,
-                        label = { Text("Postal code") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.addrCountry,
-                        onValueChange = viewModel::onAddrCountryChange,
-                        label = { Text("Country") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                if (state.step == 2) {
-                    OutlinedTextField(
-                        value = state.payHolder,
-                        onValueChange = viewModel::onPayHolderChange,
-                        label = { Text("Card holder name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.payCardNumber,
-                        onValueChange = viewModel::onPayCardNumberChange,
-                        label = { Text("Card number") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.payCvv3,
-                        onValueChange = viewModel::onPayCvv3Change,
-                        label = { Text("CVV") },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        text = "Tip: Leave all payment fields blank to skip.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                Text(
-                    text = "Already have an account? Log in",
-                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .clickable { onGoToLogin() }
-                )
-                Spacer(Modifier.height(8.dp))
-
-                if (!state.error.isNullOrBlank()) {
-                    Text(
-                        text = state.error ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                Button(
-                    onClick = viewModel::submit,
-                    enabled = !state.isLoading,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .padding(end = 8.dp),
-                            strokeWidth = 2.dp
+                    // Login link
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Already have an account? ",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text("Registering…")
-                    } else {
-                        Text(if (state.step < 2) "Next" else "Register")
+                        Text(
+                            text = "Sign in",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = EcoGreen
+                            ),
+                            modifier = Modifier.clickable { onGoToLogin() }
+                        )
                     }
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
-

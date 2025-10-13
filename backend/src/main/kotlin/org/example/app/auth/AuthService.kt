@@ -56,7 +56,8 @@ class AuthService(
                 firstName = req.firstName,
                 lastName = req.lastName,
                 username = req.username,
-                role = req.role,
+                // Force RIDER role for all registrations
+                role = UserRole.RIDER,
                 address = address
             )
         )
@@ -102,7 +103,15 @@ class AuthService(
         val id = user.id ?: error("Persisted user has null id")
         val token = TokenUtil.issueFakeToken(id, user.email)
 
-        return LoginResponse(token = token, email = user.email, userId = id)
+        // Access role within transaction to ensure it's loaded
+        val userRole = user.role.name
+
+        return LoginResponse(
+            token = token,
+            email = user.email,
+            userId = id,
+            role = userRole
+        )
     }
 }
 

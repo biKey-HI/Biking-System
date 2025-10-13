@@ -20,13 +20,14 @@ data class LoginState(
     val isLoading: Boolean = false,
     val errorMsg: String? = null,
     val successMsg: String? = null,
-    val successEmail: String? = null
+    val successEmail: String? = null,
+    val userRole: String? = null
 )
 
 sealed interface LoginEvent {
-    data class Success(val msg: String, val email: String) : LoginEvent
+    data class Success(val msg: String, val email: String, val role: String) : LoginEvent
     data class ShowMessage(val message: String) : LoginEvent
-    data class NavigateHome(val email: String) : LoginEvent
+    data class NavigateHome(val email: String, val role: String) : LoginEvent
 }
 
 
@@ -55,9 +56,28 @@ class LoginViewModel(
         val e = state.email.trim()
         val p = state.password
 
-        if (e.isBlank() || !e.contains("@") || p.length !in 8..72) {
-            set { copy(errorMsg = "Enter a valid email and 8–72 char password.") }
-            return
+        // Enhanced validation
+        when {
+            e.isBlank() -> {
+                set { copy(errorMsg = "Email is required.") }
+                return
+            }
+            !isValidEmail(e) -> {
+                set { copy(errorMsg = "Please enter a valid email address.") }
+                return
+            }
+            p.isBlank() -> {
+                set { copy(errorMsg = "Password is required.") }
+                return
+            }
+            p.length < 8 -> {
+                set { copy(errorMsg = "Password must be at least 8 characters long.") }
+                return
+            }
+            p.length > 72 -> {
+                set { copy(errorMsg = "Password must be less than 72 characters long.") }
+                return
+            }
         }
 
         set { copy(isLoading = true, errorMsg = null, successMsg = null) }
@@ -68,31 +88,39 @@ class LoginViewModel(
                 if (res.isSuccessful) {
                     val body: LoginResponse? = res.body()
                     if (body != null) {
-                        authStore?.saveToken(body.token)  // this is safe when authStore is null
+                        authStore?.saveToken(body.token)
 
-                        set { copy(isLoading = false, successMsg = "Logged in!", successEmail = body.email) }
+                        set { copy(isLoading = false, successMsg = "Successfully logged in!", successEmail = body.email, userRole = body.role) }
 
-                        _events.emit(LoginEvent.Success("Logged in!", body.email))
+                        _events.emit(LoginEvent.Success("Welcome back!", body.email, body.role))
                     } else {
-                        val err = "Empty response from server."
+                        val err = "Invalid server response. Please try again."
                         set { copy(isLoading = false, errorMsg = err) }
                         _events.emit(LoginEvent.ShowMessage(err))
                     }
                 } else if (res.code() == 401) {
-                    val err = "Wrong email or password."
+                    val err = "Invalid email or password. Please check your credentials and try again."
+                    set { copy(isLoading = false, errorMsg = err) }
+                    _events.emit(LoginEvent.ShowMessage(err))
+                } else if (res.code() == 404) {
+                    val err = "No account found with this email address. Please register first."
                     set { copy(isLoading = false, errorMsg = err) }
                     _events.emit(LoginEvent.ShowMessage(err))
                 } else {
-                    val err = "Login failed: ${res.code()} ${res.message()}"
+                    val err = "Login failed. Please try again later. (Error ${res.code()})"
                     set { copy(isLoading = false, errorMsg = err) }
                     _events.emit(LoginEvent.ShowMessage(err))
                 }
             } catch (ex: Exception) {
-                val err = "Network error: ${ex.message ?: "unknown"}"
+                val err = "Network error. Please check your connection and try again."
                 set { copy(isLoading = false, errorMsg = err) }
                 _events.emit(LoginEvent.ShowMessage(err))
             }
         }
     }
-}
 
+    private fun isValidEmail(email: String): Boolean {
+        val emailPattern = "[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+        return email.matches(emailPattern.toRegex()) && email.length <= 254
+    }
+}

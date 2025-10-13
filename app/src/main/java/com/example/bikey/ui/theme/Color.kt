@@ -2,10 +2,25 @@ package com.example.bikey.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// green theme for BiKey
+val EcoGreen = Color(0xFF4CAF50)
+val DarkGreen = Color(0xFF2E7D32)
+val LightGreen = Color(0xFF81C784)
+val AccentGreen = Color(0xFF66BB6A)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val NatureBlue = Color(0xFF2196F3)
+val SkyBlue = Color(0xFF03DAC6)
+val ForestDark = Color(0xFF1B5E20)
+val MintLight = Color(0xFFE8F5E8)
+
+
+val PureWhite = Color(0xFFFFFFFF)
+val OffWhite = Color(0xFFFAFAFA)
+val SurfaceWhite = Color(0xFFF8F9FA)
+val LightGray = Color(0xFFF5F5F5)
+
+// Text colors
+val TextPrimary = Color(0xFF212121)
+val TextSecondary = Color(0xFF757575)
+val TextOnDark = Color(0xFFFFFFFF)
+val ErrorRed = Color(0xFFE53E3E)

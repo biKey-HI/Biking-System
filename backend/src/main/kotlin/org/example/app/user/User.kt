@@ -17,7 +17,7 @@ class User(
     var id: Long? = null,
 
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = [CascadeType.PERSIST, CascadeType.MERGE])
+    @ManyToOne(fetch = FetchType.LAZY, cascade = [CascadeType.MERGE])
     @JoinColumn(name = "address_id", nullable = false)
     val address: Address,
 
@@ -48,4 +48,3 @@ class User(
     @Column(name = "role", nullable = false)
     var role: UserRole = UserRole.RIDER // it always defaults to a rider
 )
-
