@@ -64,33 +64,23 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
-    //implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.navigation:navigation-compose:2.8.2")
+    
+    // Data storage
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // Coroutines
+    // Coroutines & ViewModel
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6")
 
-    // Networking + JSON (kotlinx.serialization)
+    // Networking
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-
-
-    // Retrofit core
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-
-    // OkHttp + logging
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
-    // Kotlinx serialization
+    // JSON serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-
-    // Retrofit Kotlinx serialization converter
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
-
-    // Coroutines (if you use viewModelScope/suspend)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6")
 
     // Google Maps
     implementation("com.google.android.gms:play-services-maps:18.1.0")
@@ -105,4 +95,7 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.5.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.10")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.02"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

@@ -1,18 +1,13 @@
-// This is the registration form's UI. It creates/gets a RegisterViewModel, then displays text
-// fields for email and password, a submit button, and reacts to state (loading, error, success).
-// Then, on success, it calls the onRegistered(email) callback
-// (so MainActivity can navigate, e.g., to "home" later).
-package com.example.bikey.ui.registration
+package com.example.bikey.ui.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,45 +19,40 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.bikey.ui.theme.*
+import com.example.bikey.ui.theme.EcoGreen
+import com.example.bikey.ui.theme.PureWhite
+import com.example.bikey.ui.theme.DarkGreen
+import com.example.bikey.ui.theme.LightGreen
+import com.example.bikey.ui.theme.MintLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegisterScreen(
-    onGoToLogin: () -> Unit = {},
+fun LoginScreen(
+    onGoToRegister: () -> Unit = {},
     onGoBack: () -> Unit = {},
-    onRegistered: (String) -> Unit = {},
-    viewModel: RegisterViewModel = viewModel()
+    onLoggedIn: (String, String) -> Unit = { _, _ -> },
+    vm: LoginViewModel = viewModel()
 ) {
-    val state = viewModel.state
+    val state = vm.state
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.error) {
-        state.error?.let { snackbarHostState.showSnackbar(it) }
+    LaunchedEffect(state.errorMsg) {
+        state.errorMsg?.let { snackbarHostState.showSnackbar(it) }
     }
 
-    // Collect events
-    LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
+    LaunchedEffect(vm) {
+        vm.events.collect { event ->
             when (event) {
-                is RegisterEvent.EmailInUse -> {
-                    snackbarHostState.showSnackbar(
-                        "Account exists. Redirecting to login…",
-                        withDismissAction = true,
-                        duration = SnackbarDuration.Short
-                    )
-                    onGoToLogin()
+                is LoginEvent.Success -> {
+                    snackbarHostState.showSnackbar(message = event.msg, withDismissAction = true)
+                    onLoggedIn(event.email, event.role)
+                    vm.consumeSuccess()
                 }
-                is RegisterEvent.Success -> {
-                    snackbarHostState.showSnackbar(
-                        "Registered as ${event.email}",
-                        withDismissAction = true,
-                        duration = SnackbarDuration.Short
-                    )
-                    onRegistered(event.email)
-                }
-                is RegisterEvent.Failure -> {
+                is LoginEvent.ShowMessage -> {
                     snackbarHostState.showSnackbar(event.message)
+                }
+                is LoginEvent.NavigateHome -> {
+                    onLoggedIn(event.email, event.role)
                 }
             }
         }
@@ -98,12 +88,11 @@ fun RegisterScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 64.dp, start = 32.dp, end = 32.dp, bottom = 32.dp)
-                .verticalScroll(rememberScrollState()), // Make column scrollable
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
+            // Modern header section
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -123,7 +112,7 @@ fun RegisterScreen(
                 ) {
                     // Title section
                     Text(
-                        text = "Create Account",
+                        text = "Welcome Back",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = EcoGreen
@@ -134,7 +123,7 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Join BiKey for eco-friendly biking",
+                        text = "Sign in to your BiKey account",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
@@ -143,79 +132,10 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // First Name input
-                    OutlinedTextField(
-                        value = state.firstName,
-                        onValueChange = viewModel::onfirstNameChange,
-                        label = { Text("First Name") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "First Name",
-                                tint = EcoGreen
-                            )
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EcoGreen,
-                            focusedLabelColor = EcoGreen
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Last Name input
-                    OutlinedTextField(
-                        value = state.lastName,
-                        onValueChange = viewModel::onlastNameChange,
-                        label = { Text("Last Name") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Last Name",
-                                tint = EcoGreen
-                            )
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EcoGreen,
-                            focusedLabelColor = EcoGreen
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Username input
-                    OutlinedTextField(
-                        value = state.username,
-                        onValueChange = viewModel::onUsernameChange,
-                        label = { Text("Username") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "Username",
-                                tint = EcoGreen
-                            )
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EcoGreen,
-                            focusedLabelColor = EcoGreen
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Email input
+                    // Email input with icon
                     OutlinedTextField(
                         value = state.email,
-                        onValueChange = viewModel::onEmailChange,
+                        onValueChange = vm::onEmailChange,
                         label = { Text("Email Address") },
                         leadingIcon = {
                             Icon(
@@ -235,11 +155,11 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Password input
+                    // Password input with icon
                     OutlinedTextField(
                         value = state.password,
-                        onValueChange = viewModel::onPasswordChange,
-                        label = { Text("Password (min 8 characters)") },
+                        onValueChange = vm::onPasswordChange,
+                        label = { Text("Password") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Lock,
@@ -260,7 +180,7 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Error message
-                    if (!state.error.isNullOrBlank()) {
+                    if (!state.errorMsg.isNullOrBlank()) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
@@ -269,7 +189,7 @@ fun RegisterScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = state.error ?: "",
+                                text = state.errorMsg ?: "",
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(12.dp)
@@ -278,9 +198,9 @@ fun RegisterScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // Register button
+                    // Login button with gradient
                     Button(
-                        onClick = viewModel::submit,
+                        onClick = vm::submit,
                         enabled = !state.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -298,7 +218,7 @@ fun RegisterScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                "Creating account...",
+                                "Signing in...",
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -306,7 +226,7 @@ fun RegisterScreen(
                             )
                         } else {
                             Text(
-                                "Create Account",
+                                "Sign In",
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -317,23 +237,23 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Login link
+                    // Register link
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Already have an account? ",
+                            text = "Don't have an account? ",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Sign in",
+                            text = "Create one",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 color = EcoGreen
                             ),
-                            modifier = Modifier.clickable { onGoToLogin() }
+                            modifier = Modifier.clickable { onGoToRegister() }
                         )
                     }
                 }
