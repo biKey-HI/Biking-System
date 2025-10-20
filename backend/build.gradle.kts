@@ -27,6 +27,9 @@ dependencies {
 
     // BCrypt
     implementation("org.springframework.security:spring-security-crypto:6.3.2")
+    
+    // Email support
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 
     implementation("org.apache.commons:commons-compress:1.26.2")
 

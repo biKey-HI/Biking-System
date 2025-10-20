@@ -21,7 +21,7 @@ abstract class Bicycle(
         if (status == BikeState.ON_TRIP) {
             val takenAt = statusTransitions.last().atTime
             return Duration.between(takenAt, Instant.now())
-        } else return fail
+        } else return null
     }
 
     abstract fun getOvertimeDuration(): Duration?
@@ -35,7 +35,7 @@ abstract class Bicycle(
             }
 
             return cost
-        } else return fail
+        } else return null
     }
 
     abstract fun getRegularCost(): Float?
@@ -52,18 +52,18 @@ data class Bike(override val id: UUID = UUID.randomUUID(),
     override fun isOvertime(): Boolean? {
         if (status == BikeState.ON_TRIP)
             return getDuration()!! > Duration.ofMinutes((0.75*60).toLong())
-        else return fail
+        else return null
     }
 
     override fun getOvertimeDuration(): Duration? {
         if (status == BikeState.ON_TRIP && isOvertime()!!)
             return getDuration()!! - Duration.ofMinutes((0.75*60).toLong())
-        else return fail
+        else return null
     }
 
     override fun getRegularCost(): Float? {
         if (status == BikeState.ON_TRIP) return baseCost
-        else return fail
+        else return null
     }
 
     override fun getOvertimeCost(): Float? {
@@ -71,7 +71,7 @@ data class Bike(override val id: UUID = UUID.randomUUID(),
             val overtimeHours = getOvertimeDuration()!!.toMinutes().toFloat()/60
             val fractional = getOvertimeDuration()!!.toMinutes().toFloat()%60/60
             return overtimeRate*overtimeHours + baseCost*fractional
-        } else return fail
+        } else return null
     }
 }
 
@@ -86,19 +86,19 @@ data class EBike(override val id: UUID = UUID.randomUUID(),
     override fun isOvertime(): Boolean? {
         if (status == BikeState.ON_TRIP)
             return getDuration()!! > Duration.ofHours(2)
-        else return fail
+        else return null
     }
 
     override fun getOvertimeDuration(): Duration? {
         if (status == BikeState.ON_TRIP && isOvertime()!!)
             return getDuration()!! - Duration.ofHours(2)
-        else return fail
+        else return null
     }
 
     override fun getRegularCost(): Float? {
         if (status == BikeState.ON_TRIP)
             return baseCost + baseRate * (getDuration()!!.toMinutes().toFloat()/60)
-        else return fail
+        else return null
     }
 
     override fun getOvertimeCost(): Float? {
@@ -106,7 +106,7 @@ data class EBike(override val id: UUID = UUID.randomUUID(),
             val overtimeHours = getOvertimeDuration()!!.toMinutes().toFloat()/60
             val fractional = getOvertimeDuration()!!.toMinutes().toFloat()%30/30
             return overtimeRate*overtimeHours + baseCost*fractional
-        } else return fail
+        } else return null
     }
 }
 
