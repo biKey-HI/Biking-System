@@ -25,4 +25,8 @@ data class Address(
     //array of user ids
     @OneToMany(mappedBy = "address")
     val users: MutableList<User> = mutableListOf()
+
+    //array of docking station ids
+    @OneToMany(mappedBy = "address")
+    val dockingStations: List<DockingStation> = mutableListOf()
 )
