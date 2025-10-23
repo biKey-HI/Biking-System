@@ -276,7 +276,6 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                             lastName = "",
                             username = "",
                             role = UserRole.RIDER,
-                            // reset steps + address/payment
                             step = 0,
                             addrLine1 = "",
                             addrLine2 = "",
