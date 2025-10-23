@@ -163,7 +163,7 @@ fun RegisterScreen(
                     // Step content
                     when (state.step) {
                         0 -> {
-                            // Personal info (same fields as before)
+                            // Personal info 
                             OutlinedTextField(
                                 value = state.firstName,
                                 onValueChange = viewModel::onfirstNameChange,
