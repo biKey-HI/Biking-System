@@ -1,6 +1,7 @@
 package org.example.app.observer
 
 import org.springframework.stereotype.Component
+import org.springframework.beans.factory.annotation.Autowired
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -8,9 +9,20 @@ import java.util.concurrent.CopyOnWriteArrayList
  * Monitors bicycles for overtime usage and notifies observers
  */
 @Component
-class OvertimeNotifier : Notifier {
+class OvertimeNotifier @Autowired constructor(
+    private val appObserver: AppObserver,
+    private val emailObserver: EmailObserver,
+    private val messageTextObserver: MessageTextObserver
+) : Notifier {
     private val observers = CopyOnWriteArrayList<Observer>()
     private val LIMIT = 45 // 45 minutes limit in minutes
+    
+    init {
+        // Assign specific observers for overtime notifications
+        observers.add(appObserver)
+        observers.add(emailObserver)
+        observers.add(messageTextObserver)
+    }
     
     override fun attach(observer: Observer) {
         observers.add(observer)
@@ -31,14 +43,18 @@ class OvertimeNotifier : Notifier {
         }
     }
     
-    /**
-     * Check if a bicycle has exceeded the overtime limit
-     * @param durationMinutes The duration in minutes
-     * @return true if overtime, false otherwise
-     */
-    fun checkOvertime(durationMinutes: Long): Boolean {
-        return durationMinutes > LIMIT
+    override fun notifyObservers(message: String) {
+        observers.forEach { observer ->
+            try {
+                observer.update(message)
+            } catch (e: Exception) {
+                println("Error notifying observer: ${e.message}")
+            }
+        }
     }
+    
+    // Note: checkOvertime logic has been moved to Bicycle class
+    // This notifier only handles notifications, not the checking logic
     
     /**
      * Notify observers about overtime
@@ -47,12 +63,6 @@ class OvertimeNotifier : Notifier {
      */
     fun notifyOvertime(bikeId: String, durationMinutes: Long) {
         val message = "Bicycle $bikeId has been in use for ${durationMinutes} minutes, exceeding the ${LIMIT}-minute limit"
-        observers.forEach { observer ->
-            try {
-                observer.update(message)
-            } catch (e: Exception) {
-                println("Error notifying observer about overtime: ${e.message}")
-            }
-        }
+        notifyObservers(message)
     }
 }

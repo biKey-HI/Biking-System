@@ -1,107 +1,56 @@
-# Observer Pattern Implementation
+ Observer Pattern (Bike System)
 
-This directory contains the implementation of the Observer design pattern for the Bike System project.
+This folder contains our implementation of the Observer design pattern for the Bike System project.
 
-## Overview
 
-The Observer pattern allows objects (observers) to be notified of changes in another object (subject/notifier) without tight coupling. In our bike system, this enables real-time notifications for various events.
 
-## Architecture
+Structure
 
-### Core Interfaces
+Main Interfaces:
+Observer → Anything that wants to receive updates.
+Notifier → Anything that sends updates to observers.
+Notifier Classes:
+OvertimeNotifier → Checks if a bike is used for more than 45 minutes.
+ReservationExpiryNotifier → Warns when a reservation is about to expire.
+TripEndingNotifier → Sends a message when a trip is completed.
+Observer Classes:
+AppObserver → Sends live app notifications (using SSE).
+EmailObserver → Sends an email to the user.
+MessageTextObserver → Sends an SMS text message.
 
-- **`Observer`**: Interface for objects that want to be notified of changes
-- **`Notifier`**: Interface for subjects that can be observed
-
-### Concrete Notifiers (Subjects)
-
-- **`OvertimeNotifier`**: Monitors bicycles for overtime usage (45+ minutes)
-- **`ReservationExpiryNotifier`**: Monitors bicycle reservations for expiry warnings
-- **`TripEndingNotifier`**: Monitors bicycle trips for completion events
-
-### Concrete Observers
-
-- **`AppObserver`**: Handles real-time notifications to mobile app via Server-Sent Events (SSE)
-- **`EmailObserver`**: Sends email notifications to users
-- **`MessageTextObserver`**: Sends SMS notifications to users
-
-## Usage
-
-### Backend Integration
-
-The `NotificationService` coordinates all observers and notifiers:
-
-```kotlin
-@Autowired
-private val notificationService: NotificationService
-
-// Notify about overtime
+How It’s Used
+We used to have a NotificationService to handle everything, but now the DockingStation or Bicycle classes can call the notifiers directly.
+Here’s how it used to look:
 notificationService.notifyOvertime("bike-123", 50)
-
-// Notify about reservation expiry
 notificationService.notifyReservationExpiry("bike-456", 2)
-
-// Notify about trip ending
 notificationService.notifyTripEnding("bike-789", "station-001", 25)
-```
 
-### REST API Endpoints
 
-- `GET /api/notifications/stream/{userId}` - SSE endpoint for real-time notifications
-- `POST /api/notifications/email/{userId}` - Register email for notifications
-- `POST /api/notifications/phone/{userId}` - Register phone for SMS notifications
-- `GET /api/notifications/stats` - Get notification statistics
+But now, we usually just call the right notifier directly after something happens (like returning a bike).
 
-### Android Integration
+API Endpoints (for app & backend)
+GET /api/notifications/stream/{userId} → Real-time notifications via SSE
+POST /api/notifications/email/{userId} → Register email
+POST /api/notifications/phone/{userId} → Register phone number
+GET /api/notifications/stats → Get notification stats
 
-The Android app connects to the SSE endpoint for real-time notifications:
-
-```kotlin
+ ndroid App Setup
+The Android app connects to the server to get real-time updates:
 val notificationManager = NotificationManager(context)
 notificationManager.startNotificationService(userId)
-```
 
-## Configuration
 
-### Email Settings
-
-Configure email settings in `application.properties`:
-
-```properties
+Configuration
+Eail (in application.properties):
 spring.mail.host=smtp.gmail.com
 spring.mail.port=587
 spring.mail.username=${MAIL_USERNAME:your-email@gmail.com}
 spring.mail.password=${MAIL_PASSWORD:your-app-password}
-```
 
-### Android Dependencies
-
-Add to `app/build.gradle.kts`:
-
-```kotlin
+Android Dependencies (in app/build.gradle.kts):
 implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
-```
 
-## Testing
 
-Run the observer pattern tests:
 
-```bash
-./gradlew test --tests ObserverPatternTest
-```
 
-## Benefits
 
-1. **Loose Coupling**: Notifiers don't need to know about specific observers
-2. **Extensibility**: Easy to add new notification types
-3. **Real-time Updates**: SSE provides instant notifications to mobile apps
-4. **Multiple Channels**: Support for app, email, and SMS notifications
-5. **Scalability**: Background monitoring with scheduled tasks
-
-## Future Enhancements
-
-- Add push notifications for mobile apps
-- Implement notification preferences per user
-- Add notification history and analytics
-- Integrate with external SMS services (Twilio, etc.)
-- Add notification templates and localization

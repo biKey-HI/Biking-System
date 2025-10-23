@@ -1,6 +1,7 @@
 package org.example.app.observer
 
 import org.springframework.stereotype.Component
+import org.springframework.beans.factory.annotation.Autowired
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -8,8 +9,17 @@ import java.util.concurrent.CopyOnWriteArrayList
  * Monitors bicycle trips and notifies observers when trips are ending
  */
 @Component
-class TripEndingNotifier : Notifier {
+class TripEndingNotifier @Autowired constructor(
+    private val appObserver: AppObserver,
+    private val emailObserver: EmailObserver
+) : Notifier {
     private val observers = CopyOnWriteArrayList<Observer>()
+    
+    init {
+        // Assign specific observers for trip ending notifications
+        observers.add(appObserver)
+        observers.add(emailObserver)
+    }
     
     override fun attach(observer: Observer) {
         observers.add(observer)
@@ -29,37 +39,29 @@ class TripEndingNotifier : Notifier {
         }
     }
     
-    /**
-     * Notify observers about trip ending
-     * @param bikeId The bicycle ID
-     * @param stationId The docking station ID where the bike is being returned
-     * @param tripDurationMinutes The duration of the trip in minutes
-     */
-    fun notifyTripEnding(bikeId: String, stationId: String, tripDurationMinutes: Long) {
-        val message = "Bicycle $bikeId trip ending at station $stationId after ${tripDurationMinutes} minutes"
+    override fun notifyObservers(message: String) {
         observers.forEach { observer ->
             try {
                 observer.update(message)
             } catch (e: Exception) {
-                println("Error notifying observer about trip ending: ${e.message}")
+                println("Error notifying observer: ${e.message}")
             }
         }
     }
     
     /**
-     * Notify observers about successful trip completion
+     * Notify observers about trip ending or completion
      * @param bikeId The bicycle ID
-     * @param stationId The docking station ID
-     * @param totalCost The total cost of the trip
+     * @param stationId The docking station ID where the bike is being returned
+     * @param tripDurationMinutes The duration of the trip in minutes
+     * @param totalCost The total cost of the trip (optional)
      */
-    fun notifyTripCompleted(bikeId: String, stationId: String, totalCost: Float) {
-        val message = "Bicycle $bikeId successfully returned to station $stationId. Total cost: $$totalCost"
-        observers.forEach { observer ->
-            try {
-                observer.update(message)
-            } catch (e: Exception) {
-                println("Error notifying observer about trip completion: ${e.message}")
-            }
+    fun notifyTripEnding(bikeId: String, stationId: String, tripDurationMinutes: Long, totalCost: Float? = null) {
+        val message = if (totalCost != null) {
+            "Bicycle $bikeId successfully returned to station $stationId after ${tripDurationMinutes} minutes. Total cost: $$totalCost"
+        } else {
+            "Bicycle $bikeId trip ending at station $stationId after ${tripDurationMinutes} minutes"
         }
+        notifyObservers(message)
     }
 }

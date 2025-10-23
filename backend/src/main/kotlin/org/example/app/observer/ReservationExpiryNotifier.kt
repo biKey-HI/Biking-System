@@ -1,6 +1,7 @@
 package org.example.app.observer
 
 import org.springframework.stereotype.Component
+import org.springframework.beans.factory.annotation.Autowired
 import java.time.Instant
 import java.time.Duration
 import java.util.concurrent.CopyOnWriteArrayList
@@ -10,9 +11,16 @@ import java.util.concurrent.CopyOnWriteArrayList
  * Monitors bicycle reservations and notifies observers when they're about to expire
  */
 @Component
-class ReservationExpiryNotifier : Notifier {
+class ReservationExpiryNotifier @Autowired constructor(
+    private val appObserver: AppObserver,
+    private val reservationHelper: ReservationHelper
+) : Notifier {
     private val observers = CopyOnWriteArrayList<Observer>()
-    private val EXPIRY_WARNING = 2 // 2 minutes warning before expiry
+    
+    init {
+        // Assign only App observer for reservation expiry notifications
+        observers.add(appObserver)
+    }
     
     override fun attach(observer: Observer) {
         observers.add(observer)
@@ -32,16 +40,24 @@ class ReservationExpiryNotifier : Notifier {
         }
     }
     
+    override fun notifyObservers(message: String) {
+        observers.forEach { observer ->
+            try {
+                observer.update(message)
+            } catch (e: Exception) {
+                println("Error notifying observer: ${e.message}")
+            }
+        }
+    }
+    
     /**
-     * Check if a reservation is about to expire
+     * Check if a reservation is about to expire using the helper
      * @param reservationTime The time when the reservation was made
      * @param expiryDurationMinutes The expiry duration in minutes
      * @return true if reservation is about to expire, false otherwise
      */
     fun checkReservationExpiry(reservationTime: Instant, expiryDurationMinutes: Long): Boolean {
-        val now = Instant.now()
-        val timeUntilExpiry = Duration.between(now, reservationTime.plus(Duration.ofMinutes(expiryDurationMinutes)))
-        return timeUntilExpiry.toMinutes() <= EXPIRY_WARNING && timeUntilExpiry.toMinutes() > 0
+        return reservationHelper.checkReservationExpiry(reservationTime, expiryDurationMinutes)
     }
     
     /**
@@ -51,12 +67,6 @@ class ReservationExpiryNotifier : Notifier {
      */
     fun notifyReservationExpiry(bikeId: String, timeRemainingMinutes: Long) {
         val message = "Bicycle $bikeId reservation expires in $timeRemainingMinutes minutes"
-        observers.forEach { observer ->
-            try {
-                observer.update(message)
-            } catch (e: Exception) {
-                println("Error notifying observer about reservation expiry: ${e.message}")
-            }
-        }
+        notifyObservers(message)
     }
 }

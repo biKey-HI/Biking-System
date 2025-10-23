@@ -21,4 +21,10 @@ interface Notifier {
      * Notify all attached observers of a change
      */
     fun notifyObservers()
+    
+    /**
+     * Notify all attached observers with a specific message
+     * @param message The message to send to observers
+     */
+    fun notifyObservers(message: String)
 }
