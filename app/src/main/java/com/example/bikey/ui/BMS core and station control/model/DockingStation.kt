@@ -7,6 +7,9 @@ import java.util.UUID
 import com.google.android.gms.maps.model.LatLng
 import android.location.Geocoder
 import android.content.Context
+import com.example.bikey.ui.UserContext
+import android.os.Handler
+import android.os.Looper
 
 val ok: Unit? = Unit
 val fail: Unit? = null
@@ -18,7 +21,7 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     var name: String,
     var address: Address,
     var location: LatLng,
-    var context: Context? = null, // No need to include unless Address is missing (useful to infer address from location)
+    var context: Context? = null,
     var status: DockingStationState? = null,
     var capacity: Int = 20,
     var numFreeDocks: Int = capacity,
@@ -27,10 +30,13 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     var reservationHoldTime: Duration = Duration.ofMinutes(10),
     var stateChanges: MutableList<DockingStationStateTransition>?,
     var dashboard: Dashboard = Dashboard(),
-    var docks: MutableList<Dock> = MutableList(capacity) {Dock()} // Reservation truth not guaranteed when accessed directly; use updateReservation() first
+    var docks: MutableList<Dock> = MutableList(capacity) {Dock()}, // Reservation truth not guaranteed when accessed directly; use updateReservation() first
     // Always include a docks list unless the station's docks are all empty
 ) {
     val lock = Any()
+    val overtimeNotifier: OvertimeNotifier = OvertimeNotifier.instance
+    val reservationExpiryNotifier: ReservationExpiryNotifier = ReservationExpiryNotifier.instance
+    val tripEndingNotifier: TripEndingNotifier = TripEndingNotifier.instance
     constructor(id: UUID = UUID.randomUUID(),
     name: String? = null,
     address: Address? = null,
@@ -144,6 +150,9 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         }
         if(name == "") this.name = "${this.address.number} ${this.address.street}"
         if(context != null) this.context = context
+
+        if(this.context != null) {Notificator.context = context}
+        require(Notificator.context != null) {"A docking station needs an application context in order to be ble to notify."}
     }
     // Below: null values indicate failure: it does not make sense to call it
     fun bikeIsAvailable(): Boolean? = status?.bikeIsAvailable()
@@ -177,15 +186,20 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         return fail
     }
 
-    companion object { // Only called by operators, not cyclists
+    companion object { // Only called by operators, not riders
         fun moveBike(bike: Bicycle, fromStation: DockingStation, toStation: DockingStation, toDockId: UUID? = null): Boolean? {
-            val (first, second) = if(fromStation.id < toStation.id) fromStation to toStation else toStation to fromStation // Little trick to prevent deadlocks
-            synchronized(first.lock) {
-                synchronized(second.lock) { // 3-level return indicators:
-                    if (fromStation.takeBike(bike) == fail) return neither // return null if fails immediately -- bike still in station
-                    return toStation.returnBike(bike, toDockId) != fail // return false if fails later -- bike out of both stations
-                } // return true if does not fail -- bike was successfully placed into station
-            }
+            if(UserContext.isOperator ?: false) {
+                val (first, second) = if (fromStation.id < toStation.id) fromStation to toStation else toStation to fromStation // Little trick to prevent deadlocks
+                synchronized(first.lock) {
+                    synchronized(second.lock) { // 3-level return indicators:
+                        if (fromStation.takeBike(bike) == fail) return neither // return null if fails immediately -- bike still in station
+                        return toStation.returnBike(
+                            bike,
+                            toDockId
+                        ) != fail // return false if fails later -- bike out of both stations
+                    } // return true if does not fail -- bike was successfully placed into station
+                }
+            } else {return neither}
         }
     }
 }
@@ -268,6 +282,7 @@ class Empty(override val station: DockingStation): DockingStationState {
             station.changeStationStatus(PartiallyFilled(station))
             station.changeStationStatus(Full(station))
         }
+        station.tripEndingNotifier.notify(arrayOf(station.name))
         return ok
     }
 }
@@ -319,7 +334,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
             if (station.aBikeIsReserved) return fail
 
             if (bike != null) {
-                if (station.docks.filter { it.bike?.id == bike.id}
+                if (station.docks.filter { it.bike?.id == bike.id }
                         .count() < 1 || station.docks.filter { it.bike?.id == bike.id && it.bike!!.status != BikeState.AVAILABLE }
                         .count() > 0) return fail
                 station.aBikeIsReserved = true
@@ -334,6 +349,18 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                     )
                 )
                 d.bike!!.status = BikeState.RESERVED
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                    }
+                }, station.reservationHoldTime.toMillis() - 60000)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(0))
+                        station.updateReservation()
+                    }
+                }, station.reservationHoldTime.toMillis())
             } else {
                 if (station.docks.filter { it.bike?.status == BikeState.AVAILABLE }
                         .count() < 1) return fail
@@ -349,8 +376,21 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                     )
                 )
                 d.bike!!.status = BikeState.RESERVED
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                    }
+                }, station.reservationHoldTime.toMillis() - 60000)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(0))
+                        station.updateReservation()
+                    }
+                }, station.reservationHoldTime.toMillis())
             }
         }
+
         return ok
     }
 
@@ -394,6 +434,22 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 d.bike!!.status = BikeState.ON_TRIP
 
                 d.status = DockState.EMPTY
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.ON_TRIP) {
+                        station.overtimeNotifier.notify(arrayOf(-5, 0))
+                    }
+                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.ON_TRIP) {
+                        station.overtimeNotifier.notify(arrayOf(0, 0))
+                    }
+                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.ON_TRIP) {
+                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0))
+                    }
+                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
             }
 
             station.numFreeDocks++
@@ -455,6 +511,8 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 station.docks.first { it.id == dockId }.status = DockState.OCCUPIED
 
                 station.changeStationStatus(Full(station))
+
+                station.tripEndingNotifier.notify(arrayOf(station.name))
             }
         }
         return ok
@@ -520,6 +578,18 @@ class Full(override val station: DockingStation): DockingStationState {
                     )
                 )
                 d.bike!!.status = BikeState.RESERVED
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                    }
+                }, station.reservationHoldTime.toMillis() - 60000)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(0))
+                        station.updateReservation()
+                    }
+                }, station.reservationHoldTime.toMillis())
             } else {
                 if (station.docks.filter { it.bike?.status == BikeState.AVAILABLE }
                         .count() < 1) return fail
@@ -535,8 +605,21 @@ class Full(override val station: DockingStation): DockingStationState {
                     )
                 )
                 d.bike!!.status = BikeState.RESERVED
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                    }
+                }, station.reservationHoldTime.toMillis() - 60000)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.RESERVED) {
+                        station.reservationExpiryNotifier.notify(arrayOf(0))
+                        station.updateReservation()
+                    }
+                }, station.reservationHoldTime.toMillis())
             }
         }
+
         return ok
     }
 
@@ -580,6 +663,22 @@ class Full(override val station: DockingStation): DockingStationState {
                 d.bike!!.status = BikeState.ON_TRIP
 
                 d.status = DockState.EMPTY
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.ON_TRIP) {
+                        station.overtimeNotifier.notify(arrayOf(-5, 0))
+                    }
+                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.ON_TRIP) {
+                        station.overtimeNotifier.notify(arrayOf(0, 0))
+                    }
+                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if(d.bike!!.status == BikeState.ON_TRIP) {
+                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0))
+                    }
+                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
             }
 
             station.numFreeDocks++

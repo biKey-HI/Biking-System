@@ -1,4 +1,16 @@
-package com.example.bikey.ui.BMS core and station control.model
+package com.example.bikey.ui.bmscoreandstationcontrol.model
+import kotlin.collections.forEach
 
-class ReservationExpiryNotifier {
+
+class ReservationExpiryNotifier private constructor(): Notifier {
+    companion object {val instance: ReservationExpiryNotifier = ReservationExpiryNotifier()}
+    override val observers: MutableList<Sender> = mutableListOf(Notificator.instance)
+
+    override fun notify(message: Array<Any>): Unit {
+        require(message.count() == 1 && message[0] is Int) {"Incorrect array input."}
+        val expiry: String
+        if((message[0] as Int) < 0) expiry = "Your bike reservation is about to expire in " + (message[0] as Int)*-1 + " min."
+        else expiry = "Your bike reservation has expired."
+        observers.forEach {it.send("Reservation Expiry", expiry)}
+    }
 }
