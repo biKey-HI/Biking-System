@@ -1,4 +1,4 @@
-package com.example.bikey.ui.BMScoreandstationcontrol.model
+package com.example.bikey.ui.bmscoreandstationcontrol.model
 
 interface Sender {
     fun send(title: String, message: String): Unit

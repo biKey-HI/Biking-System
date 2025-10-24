@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.bikey.ui.User
+import com.example.bikey.ui.UserContext
 import com.example.bikey.ui.login.model.LoginRequest
 import com.example.bikey.ui.login.model.LoginResponse
 import com.example.bikey.ui.network.AuthApi
@@ -13,6 +15,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class LoginState(
     val email: String = "",
@@ -91,6 +94,8 @@ class LoginViewModel(
                         authStore?.saveToken(body.token)
 
                         set { copy(isLoading = false, successMsg = "Successfully logged in!", successEmail = body.email, userRole = body.role) }
+
+                        UserContext.user = User(UUID.randomUUID(), body.email, body.role.equals("OPERATOR"))
 
                         _events.emit(LoginEvent.Success("Welcome back!", body.email, body.role))
                     } else {

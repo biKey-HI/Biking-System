@@ -1,4 +1,6 @@
-package com.example.bikey.ui.BMS core and station control.model
+package com.example.bikey.ui.bmscoreandstationcontrol.model
 
 interface Notifier {
+    val observers: MutableList<Sender>
+    fun notify(message: Array<Any>): Unit
 }
