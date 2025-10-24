@@ -2,27 +2,24 @@ package org.example.app.reservation
 
 import jakarta.persistence.*
 import org.example.app.bike.Bicycle
-import org.example.app.user.Rider
+import org.example.app.user.User
 import java.time.Instant
+import java.util.UUID
+
 @Entity
-@Table(name = "reservations")
-class Reservation(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
+data class Reservation(
+    @Id
+    val id: UUID = UUID.randomUUID(),
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rider_id", nullable = false)
-    var rider: Rider,
+    @JoinColumn(name = "user_id") // Changed from rider_id to user_id
+    val user: User,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bike_id", nullable = false)
-    var bicycle: Bicycle,
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bike_id")
+    val bike: Bicycle,
 
-    @Column(nullable = false)
-    var status: String = "ACTIVE",  // ACTIVE / CANCELED / COMPLETED
+    var status: String = "ACTIVE",
 
-    @Column(nullable = false)
-    var reservedAt: Instant = Instant.now(),
-
-    var expiresAt: Instant? = null
+    val createdAt: Instant = Instant.now()
 )
