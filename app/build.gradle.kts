@@ -65,7 +65,10 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.navigation:navigation-compose:2.8.2")
-    
+    // extended Material icons
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.navigation:navigation-compose:2.7.7") //for compose navigation
+
     // Data storage
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 

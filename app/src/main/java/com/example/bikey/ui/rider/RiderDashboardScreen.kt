@@ -24,7 +24,8 @@ import com.example.bikey.ui.theme.*
 @Composable
 fun RiderDashboardScreen(
     riderEmail: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onFindBikeClick: () -> Unit
 ) {
     val username = riderEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
 
@@ -110,7 +111,7 @@ fun RiderDashboardScreen(
             horizontalArrangement = Arrangement.Center
         ) {
             Button(
-                onClick = { },
+                onClick = onFindBikeClick,
                 modifier = Modifier
                     .width(280.dp)
                     .height(64.dp),

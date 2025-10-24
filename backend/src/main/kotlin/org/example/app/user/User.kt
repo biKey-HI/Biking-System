@@ -7,6 +7,8 @@ import org.example.app.user.UserRole
 import java.time.Instant
 
 @Entity
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "user_type", discriminatorType = DiscriminatorType.STRING)
 @Table(
     name = "users",
     uniqueConstraints = [UniqueConstraint(columnNames = ["email"]),

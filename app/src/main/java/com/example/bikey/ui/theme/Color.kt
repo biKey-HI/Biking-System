@@ -8,6 +8,9 @@ val DarkGreen = Color(0xFF2E7D32)
 val LightGreen = Color(0xFF81C784)
 val AccentGreen = Color(0xFF66BB6A)
 
+val SuccessGreen = Color(0xFF2E7D32)
+val ElectricBlue = Color(0xFF00B0FF)
+
 val NatureBlue = Color(0xFF2196F3)
 val SkyBlue = Color(0xFF03DAC6)
 val ForestDark = Color(0xFF1B5E20)
