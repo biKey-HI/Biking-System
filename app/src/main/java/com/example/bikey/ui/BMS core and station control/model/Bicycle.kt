@@ -7,7 +7,6 @@ import java.util.UUID
 val missing: Float? = null
 val none: Duration? = null
 
-
 // -- BICYCLES -- \\
 
 abstract class Bicycle(

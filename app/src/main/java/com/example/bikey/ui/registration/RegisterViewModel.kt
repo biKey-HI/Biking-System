@@ -84,18 +84,110 @@ private val _events = MutableSharedFlow<RegisterEvent>()
     fun onAddrLine2Change(v: String) = set { copy(addrLine2 = v, error = null) }
     fun onAddrCityChange(v: String)  = set { copy(addrCity = v, error = null) }
     fun onAddrProvinceChange(p: Province) = set { copy(addrProvince = p, error = null) }
-    fun onAddrPostalChange(v: String) = set { copy(addrPostal = v, error = null) }
+    fun onAddrPostalChange(v: String) = set {
+        // Only allow alphanumeric for postal code, max 7 chars (6 + optional space)
+        val filtered = v.filter { it.isLetterOrDigit() || it == ' ' }.take(7).uppercase()
+        copy(addrPostal = filtered, error = null)
+    }
     fun onAddrCountryChange(v: String) = set { copy(addrCountry = v, error = null) }
 
     fun onPayHolderChange(v: String) = set { copy(payHolder = v, error = null) }
     fun onPayCardNumberChange(v: String) = set { copy(payCardNumber = v.filter { it.isDigit() }, error = null) }
     fun onPayCvv3Change(v: String) = set { copy(payCvv3 = v.filter { it.isDigit() }.take(3), error = null) }
 
-    // nav helpers
-    fun next() = set { copy(step = (step + 1).coerceAtMost(2)) }
-    fun previousStep() = set { copy(step = (step - 1).coerceAtLeast(0)) }
+    // nav helpers with validation
+    fun next() {
+        // Validate current step before moving to next
+        when (state.step) {
+            0 -> {
+                // Validate personal info
+                val email = state.email.trim()
+                val pwd = state.password
+                val firstname = state.firstName.trim()
+                val lastname = state.lastName.trim()
+                val username = state.username.trim()
 
-    fun submit() {
+                when {
+                    firstname.isBlank() -> {
+                        set { copy(error = "Please enter your first name") }
+                        return
+                    }
+                    firstname.length < 2 -> {
+                        set { copy(error = "First name must be at least 2 characters") }
+                        return
+                    }
+                    lastname.isBlank() -> {
+                        set { copy(error = "Please enter your last name") }
+                        return
+                    }
+                    lastname.length < 2 -> {
+                        set { copy(error = "Last name must be at least 2 characters") }
+                        return
+                    }
+                    username.isBlank() -> {
+                        set { copy(error = "Please enter a username") }
+                        return
+                    }
+                    username.length < 3 -> {
+                        set { copy(error = "Username must be at least 3 characters") }
+                        return
+                    }
+                    email.isBlank() || !email.contains("@") || !email.contains(".") -> {
+                        set { copy(error = "Please enter a valid email address") }
+                        return
+                    }
+                    pwd.length < 8 -> {
+                        set { copy(error = "Password must be at least 8 characters") }
+                        return
+                    }
+                }
+            }
+            1 -> {
+                // Validate address
+                val line1 = state.addrLine1.trim()
+                val city = state.addrCity.trim()
+                val postal = state.addrPostal.trim().replace(" ", "")
+
+                when {
+                    line1.isBlank() -> {
+                        set { copy(error = "Please enter your street address") }
+                        return
+                    }
+                    line1.length < 5 -> {
+                        set { copy(error = "Please enter a complete street address") }
+                        return
+                    }
+                    city.isBlank() -> {
+                        set { copy(error = "Please enter your city") }
+                        return
+                    }
+                    city.length < 2 -> {
+                        set { copy(error = "Please enter a valid city name") }
+                        return
+                    }
+                    postal.isBlank() -> {
+                        set { copy(error = "Please enter your postal code") }
+                        return
+                    }
+                    postal.length != 6 -> {
+                        set { copy(error = "Postal code must be 6 characters (e.g., H3A2B4)") }
+                        return
+                    }
+                }
+            }
+        }
+        // If validation passes, move to next step
+        set { copy(step = (step + 1).coerceAtMost(2), error = null) }
+    }
+
+    fun previousStep() = set { copy(step = (step - 1).coerceAtLeast(0), error = null) }
+
+    // Allow skipping payment step: submit(skipPayment = true) will send payment = null
+    fun skipPayment() {
+        submit(skipPayment = true)
+    }
+
+    fun submit(skipPayment: Boolean = false) {
         Log.d("RegisterVM", "submit() tapped. email='${state.email}', firstname='${state.firstName}'," +
                 "lastname='${state.lastName}', username='${state.username}', role='${state.role}'")
 
@@ -132,15 +224,29 @@ private val _events = MutableSharedFlow<RegisterEvent>()
             return
         }
 
-        // Create minimal address and payment (can be empty for simplified registration)
+        // Build address payload from state (user must have filled address page before submitting)
         val address = AddressPayload(
-            line1 = "",
-            line2 = null,
-            city = "",
-            province = Province.QC,
-            postalCode = "",
-            country = "CA"
+            line1 = state.addrLine1.trim(),
+            line2 = state.addrLine2.trim().ifEmpty { null },
+            city = state.addrCity.trim(),
+            province = state.addrProvince,
+            postalCode = state.addrPostal.trim(),
+            country = state.addrCountry.trim().ifEmpty { "CA" }
         )
+
+        // Build payment payload if not skipped and a holder name is present
+        val payment = if (skipPayment) {
+            null
+        } else {
+            if (state.payHolder.isBlank()) null else PaymentPayload(
+                cardHolderName = state.payHolder.trim(),
+                provider = null,
+                token = null,
+                cardBrand = null,
+                cardLast4 = state.payCardNumber.takeLast(4).ifEmpty { null },
+                cardNumber = state.payCardNumber
+            )
+        }
 
         viewModelScope.launch {
             set { copy(isLoading = true, error = null, successEmail = null) }
@@ -154,7 +260,7 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                     username = username,
                     role = role,
                     address = address,
-                    payment = null
+                    payment = payment
                 ))
 
                 if (res.isSuccessful) {
@@ -169,7 +275,17 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                             firstName = "",
                             lastName = "",
                             username = "",
-                            role = UserRole.RIDER
+                            role = UserRole.RIDER,
+                            step = 0,
+                            addrLine1 = "",
+                            addrLine2 = "",
+                            addrCity = "",
+                            addrProvince = Province.QC,
+                            addrPostal = "",
+                            addrCountry = "CA",
+                            payHolder = "",
+                            payCardNumber = "",
+                            payCvv3 = ""
                         )
                     }
                     _events.emit(RegisterEvent.Success(email))
