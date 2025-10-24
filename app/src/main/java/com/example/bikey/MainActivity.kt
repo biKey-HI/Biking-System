@@ -128,6 +128,11 @@ class MainActivity : ComponentActivity() {
                                     nav.navigate("welcome") {
                                         popUpTo("welcome") { inclusive = true }
                                     }
+                                },
+                                // ADD THIS BLOCK TO FIX THE ERROR
+                                onFindBikeClick = {
+                                    // Navigate to the reservation screen
+                                    nav.navigate("reservation")
                                 }
                             )
                         }
