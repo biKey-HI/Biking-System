@@ -22,6 +22,7 @@ import com.example.bikey.ui.theme.BiKeyTheme
 import com.example.bikey.ui.welcome.WelcomeScreen
 import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
+import com.example.bikey.ui.operator.OperatorMapDashboardScreen
 import com.example.bikey.ui.rider.RiderDashboardScreen
 
 class MainActivity : ComponentActivity() {
@@ -159,6 +160,17 @@ class MainActivity : ComponentActivity() {
                                     nav.navigate("welcome") {
                                         popUpTo("welcome") { inclusive = true }
                                     }
+                                },
+                                onNavigateToMapDashboard = {
+                                    nav.navigate("operatorMapDashboard")
+                                }
+                            )
+                        }
+
+                        composable("operatorMapDashboard") {
+                            OperatorMapDashboardScreen(
+                                onNavigateBack = {
+                                    nav.popBackStack()
                                 }
                             )
                         }
