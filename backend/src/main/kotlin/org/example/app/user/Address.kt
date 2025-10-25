@@ -1,6 +1,7 @@
 package org.example.app.user
 
 import jakarta.persistence.*
+import org.example.app.dockingstation.DockingStation
 import org.example.app.user.Province
 
 @Entity
@@ -24,9 +25,9 @@ data class Address(
 
     //array of user ids
     @OneToMany(mappedBy = "address")
-    val users: MutableList<User> = mutableListOf()
+    val users: MutableList<User> = mutableListOf(),
 
     //array of docking station ids
     @OneToMany(mappedBy = "address")
-    val dockingStations: List<DockingStation> = mutableListOf()
+    val dockingStations: MutableList<DockingStation> = mutableListOf()
 )

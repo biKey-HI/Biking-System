@@ -10,6 +10,9 @@ plugins {
     // Kotlinx Serialization (you use @Serializable in the app)
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20" apply false
 
+    // Google Maps Secrets Plugin
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin") version "2.0.1" apply false
+
     // Spring (backend)
     id("org.springframework.boot") version "3.3.3" apply false
     id("io.spring.dependency-management") version "1.1.6" apply false
