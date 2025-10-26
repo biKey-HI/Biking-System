@@ -1,6 +1,8 @@
 package com.example.bikey.ui.registration.model
 
+import com.example.bikey.ui.UUIDSerializer
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 
 enum class UserRole { RIDER, OPERATOR }
@@ -13,13 +15,15 @@ data class RegisterRequest(
     val password: String,
     val role: UserRole = UserRole.RIDER,
     val address: AddressPayload,
-    val payment: PaymentPayload? = null
+    val payment: PaymentPayload? = null,
+    val notificationToken: String
 )
 
 
 @Serializable
 data class RegisterResponse(
-    val id: Long,
+    @Serializable(with = UUIDSerializer::class)
+    val id: UUID,
     val email: String
 )
 @Serializable

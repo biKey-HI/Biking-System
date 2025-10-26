@@ -1,20 +1,28 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
+<<<<<<< HEAD
     id("com.android.application") version "8.6.0" apply false
     id("org.jetbrains.kotlin.android") version "2.0.20" apply false
     id("org.jetbrains.kotlin.jvm") version "2.0.20" apply false
+=======
+    id("com.android.application") version "8.13.0" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.21" apply false
+    id("org.jetbrains.kotlin.jvm") version "2.2.21" apply false
+>>>>>>> 6134ef5 (Moved All Current Bike and Station Logic to the Backend)
 
     // Kotlin 2.0 + Compose compiler plugin
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.20" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21" apply false
 
     // Kotlinx Serialization (you use @Serializable in the app)
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20" apply false
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21" apply false
 
     // Google Maps Secrets Plugin
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin") version "2.0.1" apply false
 
     // Spring (backend)
-    id("org.springframework.boot") version "3.3.3" apply false
-    id("io.spring.dependency-management") version "1.1.6" apply false
+    id("org.springframework.boot") version "3.5.7" apply false
+    id("io.spring.dependency-management") version "1.1.7" apply false
 
+    // Firebase
+    id("com.google.gms.google-services") version "4.4.4" apply false
 }

@@ -3,19 +3,24 @@
 package org.example.app.user
 
 import jakarta.persistence.*
-import org.example.app.user.UserRole
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(
     name = "users",
     uniqueConstraints = [UniqueConstraint(columnNames = ["email"]),
-        UniqueConstraint(name = "ux_users_username", columnNames = ["username"])]
+        UniqueConstraint(name = "ux_users_username", columnNames = ["username"])
+    ]
 )
 class User(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
+    @JdbcTypeCode(SqlTypes.CHAR) @Id @GeneratedValue @Column(columnDefinition = "CHAR(36)")
+    var id: UUID? = null,
 
+    @Column(nullable = true)
+    var notificationToken: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = [CascadeType.MERGE])
     @JoinColumn(name = "address_id", nullable = false)
