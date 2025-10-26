@@ -1,7 +1,8 @@
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.spring")
-    kotlin("plugin.jpa")
+    kotlin("jvm") version "2.2.21"
+    kotlin("plugin.spring") version "2.2.21"
+    kotlin("plugin.jpa") version "2.2.21"
+    kotlin("plugin.serialization") version "2.2.21"
     id("org.springframework.boot")
     id("io.spring.dependency-management")
 }
@@ -31,6 +32,16 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.26.2")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+    // Timers
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+
+    // Firebase
+    implementation("com.google.firebase:firebase-admin:9.2.0")
 }
 
 tasks.test { useJUnitPlatform() }

@@ -19,8 +19,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import android.util.Log
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import com.example.bikey.ui.UserContext
 
 
 data class RegisterUiState(
@@ -252,6 +254,11 @@ private val _events = MutableSharedFlow<RegisterEvent>()
             set { copy(isLoading = true, error = null, successEmail = null) }
             try {
                 Log.d("RegisterVM", "Calling API…")
+                var notificationToken = ""
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (!task.isSuccessful) return@addOnCompleteListener
+                    notificationToken = task.result
+                }
                 val res = api.register(RegisterRequest(
                     email = email,
                     password = pwd,
@@ -260,7 +267,8 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                     username = username,
                     role = role,
                     address = address,
-                    payment = payment
+                    payment = payment,
+                    notificationToken = notificationToken
                 ))
 
                 if (res.isSuccessful) {
@@ -288,6 +296,7 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                             payCvv3 = ""
                         )
                     }
+                    UserContext.notificationToken = if(notificationToken == "") {null} else {notificationToken}
                     _events.emit(RegisterEvent.Success(email))
                 } else if (res.code() == 409) {
                     set { copy(isLoading = false, error = "Account already exists. Please log in instead.") }

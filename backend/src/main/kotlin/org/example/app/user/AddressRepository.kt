@@ -3,8 +3,9 @@ package org.example.app.user
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.util.UUID
 
-interface AddressRepository : JpaRepository<Address, Long> {
+interface AddressRepository : JpaRepository<Address, UUID> {
 
     fun findByLine1AndLine2AndCityAndProvinceAndPostalCodeAndCountry(
         line1: String,

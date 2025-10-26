@@ -58,7 +58,8 @@ class AuthService(
                 username = req.username,
                 // Force RIDER role for all registrations
                 role = UserRole.RIDER,
-                address = address
+                address = address,
+                notificationToken = req.notificationToken
             )
         )
         // Optional: save payment if provided
@@ -92,7 +93,7 @@ class AuthService(
         val email = req.email.trim()
 
         // Unwrap nullable result; throw if not found
-        val user = userRepository.findByEmail(email)
+        var user = userRepository.findByEmail(email)
             ?: throw InvalidCredentialsException()
 
         // Now 'user' is non-null, so these are fine:
@@ -105,6 +106,9 @@ class AuthService(
 
         // Access role within transaction to ensure it's loaded
         val userRole = user.role.name
+
+        user.notificationToken = if(req.notificationToken == "") {null} else {req.notificationToken}
+        userRepository.save(user)
 
         return LoginResponse(
             token = token,

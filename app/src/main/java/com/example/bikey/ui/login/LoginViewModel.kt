@@ -15,7 +15,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import java.util.UUID
+import com.google.firebase.messaging.FirebaseMessaging
 
 data class LoginState(
     val email: String = "",
@@ -87,15 +87,22 @@ class LoginViewModel(
 
         viewModelScope.launch {
             try {
-                val res = api.login(LoginRequest(e, p))
+                var notificationToken = ""
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (!task.isSuccessful) return@addOnCompleteListener
+                    notificationToken = task.result
+                }
+                val res = api.login(LoginRequest(e, p, notificationToken))
                 if (res.isSuccessful) {
                     val body: LoginResponse? = res.body()
                     if (body != null) {
                         authStore?.saveToken(body.token)
+                        UserContext.notificationToken = if(notificationToken == "") {null} else {notificationToken}
+
 
                         set { copy(isLoading = false, successMsg = "Successfully logged in!", successEmail = body.email, userRole = body.role) }
 
-                        UserContext.user = User(UUID.randomUUID(), body.email, body.role.equals("OPERATOR"))
+                        UserContext.user = User(body.userId, body.email, body.role == "OPERATOR")
 
                         _events.emit(LoginEvent.Success("Welcome back!", body.email, body.role))
                     } else {

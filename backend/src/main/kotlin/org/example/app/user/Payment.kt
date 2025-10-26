@@ -1,6 +1,9 @@
 package org.example.app.user
 
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
+import java.util.UUID
 
 @Entity
 @Table(
@@ -8,8 +11,8 @@ import jakarta.persistence.*
     uniqueConstraints = [ UniqueConstraint(columnNames = ["user_id"]) ]
 )
 data class Payment(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @JdbcTypeCode(SqlTypes.CHAR) @Id @GeneratedValue @Column(columnDefinition = "CHAR(36)")
+    val id: UUID? = null,
 
 
     @OneToOne(fetch = FetchType.LAZY)
