@@ -9,5 +9,6 @@ class UserContext {
         val id: UUID? = user?.id
         val isOperator: Boolean? = user?.isOperator
         val email: String? = user?.email
+        var notificationToken: String? = null
     }
 }

@@ -1,15 +1,11 @@
-package com.example.bikey.ui.bmscoreandstationcontrol.model
+package org.example.app.bmscoreandstationcontrol
 
 import java.time.Duration
 import java.time.Instant
-import java.util.Locale
 import java.util.UUID
-import com.google.android.gms.maps.model.LatLng
-import android.location.Geocoder
-import android.content.Context
-import com.example.bikey.ui.UserContext
-import android.os.Handler
-import android.os.Looper
+import kotlinx.coroutines.*
+import org.example.app.user.UserRepository
+import org.example.app.user.UserRole
 
 val ok: Unit? = Unit
 val fail: Unit? = null
@@ -21,17 +17,17 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     var name: String,
     var address: Address,
     var location: LatLng,
-    var context: Context? = null,
     var status: DockingStationState? = null,
     var capacity: Int = 20,
     var numFreeDocks: Int = capacity,
     var numOccupiedDocks: Int = capacity - numFreeDocks,
-    var aBikeIsReserved: Boolean = false, // Reservation truth not guaranteed when accessed directly; use updateReservation() first
+    var aBikeIsReserved: Boolean = false,
     var reservationHoldTime: Duration = Duration.ofMinutes(10),
     var stateChanges: MutableList<DockingStationStateTransition>?,
     var dashboard: Dashboard = Dashboard(),
-    var docks: MutableList<Dock> = MutableList(capacity) {Dock()}, // Reservation truth not guaranteed when accessed directly; use updateReservation() first
-    // Always include a docks list unless the station's docks are all empty
+    var docks: MutableList<Dock> = MutableList(capacity) {Dock()}, // Always include a docks list unless the station's docks are all empty
+    var userRepository: UserRepository,
+    var reservationUserId: UUID? = null // Only when a reservation is ongoing
 ) {
     val lock = Any()
     val overtimeNotifier: OvertimeNotifier = OvertimeNotifier.instance
@@ -39,9 +35,8 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     val tripEndingNotifier: TripEndingNotifier = TripEndingNotifier.instance
     constructor(id: UUID = UUID.randomUUID(),
     name: String? = null,
-    address: Address? = null,
-    location: LatLng? = null,
-    context: Context? = null,
+    address: Address,
+    location: LatLng,
     status: DockingStationState? = null,
     capacity: Int? = null,
     numFreeDocks: Int? = null,
@@ -50,12 +45,13 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     reservationHoldTime: Duration = Duration.ofMinutes(10),
     stateChanges: MutableList<DockingStationStateTransition>? = null,
     dashboard: Dashboard = Dashboard(),
-    docks: MutableList<Dock>? = null
+    docks: MutableList<Dock>? = null,
+    userRepository: UserRepository,
+    reservationUserId: UUID? = null
     ) : this(id = id,
         name = name ?: "",
-        address = address ?: Address(number = 0, street = "", postalCode = ""),
-        location = location ?: LatLng(0.0,0.0),
-        context = context,
+        address = address,
+        location = location,
         status = null,
         capacity = capacity ?: 20,
         numFreeDocks = numFreeDocks ?: 0,
@@ -64,7 +60,9 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         reservationHoldTime = reservationHoldTime,
         stateChanges = stateChanges,
         dashboard = dashboard,
-        docks = docks ?: MutableList((capacity ?: 20)) {Dock()}
+        docks = docks ?: MutableList((capacity ?: 20)) {Dock()},
+        userRepository = userRepository,
+        reservationUserId = reservationUserId
     ) {
         require(reservationHoldTime > Duration.ZERO) {"A docking station needs to have a reservation hold time."}
 
@@ -142,24 +140,14 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         require(this.stateChanges!!.count() > 0) {"A docking station must have at least one state change."}
         require(this.stateChanges!!.last().toState == this.status) {"A docking station's last state change must be the current status."}
 
-        require(address != null || (location != null && context != null)) {"A docking station must have a geographical position."}
-        if(address == null && location != null && context != null) this.address = Address.fromGeocoder(context!!, location)
-        else if(location == null && address != null) {
-            val loc = Geocoder(context!!, Locale.CANADA).getFromLocationName("${address.number} ${address.street}, ${address.postalCode}, ${address.city}, ${address.provinceCode}", 1)
-            if(!loc.isNullOrEmpty()) {this.location = LatLng(loc[0].latitude, loc[0].longitude)}
-        }
         if(name == "") this.name = "${this.address.number} ${this.address.street}"
-        if(context != null) this.context = context
-
-        if(this.context != null) {Notificator.context = context}
-        require(Notificator.context != null) {"A docking station needs an application context in order to be ble to notify."}
     }
     // Below: null values indicate failure: it does not make sense to call it
     fun bikeIsAvailable(): Boolean? = status?.bikeIsAvailable()
-    fun takeBike(bike: Bicycle, fromReservation: Boolean = false): Unit? = status?.takeBike(bike, fromReservation)
-    fun returnBike(bike: Bicycle, dockId: UUID? = null): Unit? = status?.returnBike(bike, dockId)
+    fun takeBike(bike: Bicycle, fromReservation: Boolean = false, userId: UUID? = null): Unit? = status?.takeBike(bike, fromReservation, userId)
+    fun returnBike(bike: Bicycle, dockId: UUID? = null, userId: UUID? = null): Unit? = status?.returnBike(bike, dockId, userId)
     fun changeStationStatus(newStatus: DockingStationState): Unit? = status?.changeStationStatus(newStatus)
-    fun reserveBike(bike: Bicycle?): Unit? = status?.reserveBike(bike)
+    fun reserveBike(bike: Bicycle?, userId: UUID): Unit? = status?.reserveBike(bike, userId)
 
     fun updateReservation(): Unit? {
         synchronized(lock) {
@@ -186,13 +174,13 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         return fail
     }
 
-    companion object { // Only called by operators, not riders
-        fun moveBike(bike: Bicycle, fromStation: DockingStation, toStation: DockingStation, toDockId: UUID? = null): Boolean? {
-            if(UserContext.isOperator ?: false) {
-                val (first, second) = if (fromStation.id < toStation.id) fromStation to toStation else toStation to fromStation // Little trick to prevent deadlocks
+    // companion object {
+        fun moveBikeFromThisStation(userId: UUID, bike: Bicycle, toStation: DockingStation, toDockId: UUID? = null): Boolean? { // Only called by operators, not riders
+            if((this.userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
+                val (first, second) = if (this.id < toStation.id) this to toStation else toStation to this // Little trick to prevent deadlocks
                 synchronized(first.lock) {
                     synchronized(second.lock) { // 3-level return indicators:
-                        if (fromStation.takeBike(bike) == fail) return neither // return null if fails immediately -- bike still in station
+                        if (this.takeBike(bike) == fail) return neither // return null if fails immediately -- bike still in station
                         return toStation.returnBike(
                             bike,
                             toDockId
@@ -201,7 +189,7 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
                 }
             } else {return neither}
         }
-    }
+    // }
 }
 
 
@@ -214,9 +202,9 @@ interface DockingStationState {
 
     fun bikeIsAvailable(): Boolean?
 
-    fun takeBike(bike: Bicycle, fromReservation: Boolean? = false): Unit?
-    fun returnBike(bike: Bicycle, dockId: UUID? = null): Unit?
-    fun reserveBike(bike: Bicycle? = null): Unit?
+    fun takeBike(bike: Bicycle, fromReservation: Boolean? = false, userId: UUID? = null): Unit?
+    fun returnBike(bike: Bicycle, dockId: UUID? = null, userId: UUID? = null): Unit?
+    fun reserveBike(bike: Bicycle? = null, userId: UUID): Unit?
 }
 
 class Empty(override val station: DockingStation): DockingStationState {
@@ -251,9 +239,9 @@ class Empty(override val station: DockingStation): DockingStationState {
 
     override fun bikeIsAvailable(): Boolean? = false
 
-    override fun reserveBike(bike: Bicycle?): Unit? = fail
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = fail
-    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? {
+    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? = fail
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? = fail
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? {
         synchronized(station.lock) {
             if (bike.status != BikeState.ON_TRIP) return fail
             if (dockId != null && station.docks.firstOrNull { it.id == dockId } == null) return fail
@@ -282,7 +270,7 @@ class Empty(override val station: DockingStation): DockingStationState {
             station.changeStationStatus(PartiallyFilled(station))
             station.changeStationStatus(Full(station))
         }
-        station.tripEndingNotifier.notify(arrayOf(station.name))
+        station.tripEndingNotifier.notify(arrayOf(station.name), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
         return ok
     }
 }
@@ -328,7 +316,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
         }
     }
 
-    override fun reserveBike(bike: Bicycle?): Unit? {
+    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
             if (station.aBikeIsReserved) return fail
@@ -350,17 +338,20 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 )
                 d.bike!!.status = BikeState.RESERVED
 
-                Handler(Looper.getMainLooper()).postDelayed({
+                station.reservationUserId = userId
+
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis() - 60000)
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0))
-                        station.updateReservation()
+                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis())
+                }
             } else {
                 if (station.docks.filter { it.bike?.status == BikeState.AVAILABLE }
                         .count() < 1) return fail
@@ -377,30 +368,36 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 )
                 d.bike!!.status = BikeState.RESERVED
 
-                Handler(Looper.getMainLooper()).postDelayed({
+                station.reservationUserId = userId
+
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis() - 60000)
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0))
-                        station.updateReservation()
+                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis())
+                }
             }
         }
 
         return ok
     }
 
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? {
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? {
         val fromReservation = fromReservation ?: false
 
         synchronized(station.lock) {
             station.updateReservation()
 
             if (fromReservation) {
+                if(station.reservationUserId == null || userId == null) return fail
+                if(station.reservationUserId != userId) return fail
+
                 if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.RESERVED }
                         .count() < 1) return fail
                 station.aBikeIsReserved = false
@@ -435,21 +432,24 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
 
                 d.status = DockState.EMPTY
 
-                Handler(Looper.getMainLooper()).postDelayed({
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(-5, 0))
+                        station.overtimeNotifier.notify(arrayOf(-5, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
                     }
-                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(0, 0))
+                        station.overtimeNotifier.notify(arrayOf(0, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
                     }
-                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0))
+                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
                     }
-                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
+                }
             }
 
             station.numFreeDocks++
@@ -459,7 +459,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
         return ok
     }
 
-    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? {
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
 
@@ -472,6 +472,8 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
             if (bike.status != BikeState.ON_TRIP && bike.status != BikeState.RESERVED) return fail
 
             if (bike.status == BikeState.RESERVED) {
+                if(station.reservationUserId == null || userId == null) return fail
+                if(station.reservationUserId != userId) return fail
                 station.docks.filter { it.bike?.status == BikeState.RESERVED }
                     .first().bike!!.statusTransitions.add(
                     BikeStateTransition(
@@ -512,7 +514,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
 
                 station.changeStationStatus(Full(station))
 
-                station.tripEndingNotifier.notify(arrayOf(station.name))
+                station.tripEndingNotifier.notify(arrayOf(station.name), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
             }
         }
         return ok
@@ -558,7 +560,7 @@ class Full(override val station: DockingStation): DockingStationState {
         }
     }
 
-    override fun reserveBike(bike: Bicycle?): Unit? {
+    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
             if (station.aBikeIsReserved) return null
@@ -579,17 +581,20 @@ class Full(override val station: DockingStation): DockingStationState {
                 )
                 d.bike!!.status = BikeState.RESERVED
 
-                Handler(Looper.getMainLooper()).postDelayed({
+                station.reservationUserId = userId
+
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis() - 60000)
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0))
-                        station.updateReservation()
+                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis())
+                }
             } else {
                 if (station.docks.filter { it.bike?.status == BikeState.AVAILABLE }
                         .count() < 1) return fail
@@ -606,30 +611,36 @@ class Full(override val station: DockingStation): DockingStationState {
                 )
                 d.bike!!.status = BikeState.RESERVED
 
-                Handler(Looper.getMainLooper()).postDelayed({
+                station.reservationUserId = userId
+
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1))
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis() - 60000)
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0))
-                        station.updateReservation()
+                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
                     }
-                }, station.reservationHoldTime.toMillis())
+                }
             }
         }
 
         return ok
     }
 
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? {
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? {
         val fromReservation = fromReservation ?: false
 
         synchronized(station.lock) {
             station.updateReservation()
 
             if (fromReservation) {
+                if(station.reservationUserId == null || userId == null) return fail
+                if(station.reservationUserId != userId) return fail
+
                 if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.RESERVED }
                         .count() < 1) return fail
                 station.aBikeIsReserved = false
@@ -664,21 +675,24 @@ class Full(override val station: DockingStation): DockingStationState {
 
                 d.status = DockState.EMPTY
 
-                Handler(Looper.getMainLooper()).postDelayed({
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(-5, 0))
+                        station.overtimeNotifier.notify(arrayOf(-5, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
                     }
-                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(0, 0))
+                        station.overtimeNotifier.notify(arrayOf(0, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
                     }
-                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
-                Handler(Looper.getMainLooper()).postDelayed({
+                }
+                CoroutineScope(Dispatchers.Default).launch {
+                    delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0))
+                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
                     }
-                }, (if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
+                }
             }
 
             station.numFreeDocks++
@@ -689,12 +703,15 @@ class Full(override val station: DockingStation): DockingStationState {
         return ok
     }
 
-    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? {
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
 
             if (bike.status != BikeState.RESERVED || station.docks.filter { it.bike?.id == bike?.id && it.bike!!.status == BikeState.RESERVED }
                     .count() < 1) return fail
+
+            if(station.reservationUserId == null || userId == null) return fail
+            if(station.reservationUserId != userId) return fail
 
             station.docks.filter { it.bike?.status == BikeState.RESERVED }
                 .first().bike!!.statusTransitions.add(
@@ -744,9 +761,9 @@ class OutOfService(override val station: DockingStation): DockingStationState {
 
     override fun bikeIsAvailable(): Boolean? = neither
 
-    override fun reserveBike(bike: Bicycle?): Unit? = fail
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?): Unit? = fail
-    override fun returnBike(bike: Bicycle, dockId: UUID?): Unit? = fail
+    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? = fail
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? = fail
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? = fail
 }
 
 
@@ -770,7 +787,7 @@ enum class DockState(val displayName: String) {
 }
 
 
-// -- ADDRESSES -- \\
+// -- GEOGRAPHICAL POSITIONS -- \\
 
 data class Address(
     val number: Int,
@@ -792,17 +809,5 @@ data class Address(
         provinceCode = "QC",
         country = "Canada"
     )
-
-    companion object {
-        fun fromGeocoder(context: Context, location: LatLng): Address {
-            val addrList = Geocoder(context, Locale.CANADA).getFromLocation(location.latitude, location.longitude, 1)
-            if (!addrList.isNullOrEmpty()) {
-                val streetParts = addrList[0].thoroughfare?.split(" ", limit = 2)
-                val number = streetParts?.firstOrNull()?.toIntOrNull() ?: 0
-                val street = streetParts?.drop(1)?.joinToString(" ") ?: addrList[0].thoroughfare ?: ""
-                return Address(number = number, street = street, apartment = null, postalCode = addrList[0].postalCode ?: "", city = addrList[0].locality ?: "Montreal", province = addrList[0].adminArea ?: "Quebec", provinceCode = "QC", country = addrList[0].countryName ?: "Canada")
-            }
-            return Address(number = 0, street = "", postalCode = "")
-        }
-    }
 }
+data class LatLng(val latitude: Double, val longitude: Double)

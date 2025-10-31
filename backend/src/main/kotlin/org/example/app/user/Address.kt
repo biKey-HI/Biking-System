@@ -1,7 +1,9 @@
 package org.example.app.user
 
 import jakarta.persistence.*
-import org.example.app.user.Province
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
+import java.util.UUID
 
 @Entity
 @Table(
@@ -12,8 +14,8 @@ import org.example.app.user.Province
     ) ]
 )
 data class Address(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @JdbcTypeCode(SqlTypes.CHAR) @Id @GeneratedValue @Column(columnDefinition = "CHAR(36)")
+    val id: UUID? = null,
 
     @Column(nullable = false) val line1: String,
     @Column(nullable = true)  val line2: String? = null,

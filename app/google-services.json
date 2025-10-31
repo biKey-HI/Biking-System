@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "662431450667",
+    "project_id": "bikey-f17f3",
+    "storage_bucket": "bikey-f17f3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:662431450667:android:eaa8bc12143fa69ca14c6e",
+        "android_client_info": {
+          "package_name": "com.example.bikey"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxbhxr1HmXPxnU1IpheqT75LusyQT13xk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

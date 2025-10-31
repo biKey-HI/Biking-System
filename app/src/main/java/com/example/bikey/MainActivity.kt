@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
                 requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
             }
         }
+
             setContent {
             BiKeyTheme {
                 Surface(

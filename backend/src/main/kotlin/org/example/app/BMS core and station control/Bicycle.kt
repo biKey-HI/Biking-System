@@ -1,4 +1,4 @@
-package com.example.bikey.ui.bmscoreandstationcontrol.model
+package org.example.app.bmscoreandstationcontrol
 
 import java.time.Duration
 import java.time.Instant
