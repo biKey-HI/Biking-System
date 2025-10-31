@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     id("com.google.gms.google-services")
 }
 
@@ -52,6 +53,7 @@ android {
     }
 }
 
+
 kotlin {
     jvmToolchain(17)
 }
@@ -85,7 +87,8 @@ dependencies {
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
 
     // Google Maps
-    implementation("com.google.android.gms:play-services-maps:18.1.0")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
+    implementation("com.google.maps.android:maps-compose:4.3.3")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
@@ -107,3 +110,15 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
 
 }
+
+secrets {
+    // add your Maps API key to project:
+    // 1. If the secrets.properties file does not exist, create it in the same folder as the local.properties file.
+    // 2. Add this line, where YOUR_API_KEY is your API key:
+    //        MAPS_API_KEY=YOUR_API_KEY
+    propertiesFileName = "secrets.properties"
+
+    // A properties file containing default secret values.
+    defaultPropertiesFileName = "local.defaults.properties"
+}
+        

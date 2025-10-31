@@ -1,6 +1,5 @@
 *.iml
 .gradle
-/local.properties
 /.idea
 /.idea/caches
 /.idea/libraries
@@ -13,7 +12,6 @@
 /captures
 .externalNativeBuild
 .cxx
-local.properties
 *.db
 *.db-shm
 *.db-wal
@@ -21,8 +19,16 @@ local.properties
 # Gradle
 **/build/
 !gradle/wrapper/gradle-wrapper.jar
+/out/
+bin/
 # Android Studio / IntelliJ
 .idea/
 .kotlinc/
 .kotlin/
 backend/data/
+# Local Config / Secrets
+local.properties
+/local.properties
+local.defaults.properties
+secrets.properties
+.vscode/

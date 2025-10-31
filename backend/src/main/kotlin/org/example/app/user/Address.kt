@@ -1,6 +1,8 @@
 package org.example.app.user
 
 import jakarta.persistence.*
+import org.example.app.dockingstation.DockingStation
+import org.example.app.user.Province
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.util.UUID
@@ -26,5 +28,9 @@ data class Address(
 
     //array of user ids
     @OneToMany(mappedBy = "address")
-    val users: MutableList<User> = mutableListOf()
+    val users: MutableList<User> = mutableListOf(),
+
+    //array of docking station ids
+    @OneToMany(mappedBy = "address")
+    val dockingStations: MutableList<DockingStation> = mutableListOf()
 )

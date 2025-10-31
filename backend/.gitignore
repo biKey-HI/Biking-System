@@ -25,3 +25,5 @@ local.properties
 .kotlinc/
 .kotlin/
 .gradle/
+
+backend\bin\*

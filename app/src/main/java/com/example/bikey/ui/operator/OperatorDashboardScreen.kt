@@ -21,7 +21,8 @@ import com.example.bikey.ui.theme.*
 @Composable
 fun OperatorDashboardScreen(
     operatorEmail: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToMapDashboard: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -138,7 +139,7 @@ fun OperatorDashboardScreen(
             icon = Icons.Default.LocationOn,
             title = "Station Management",
             description = "Manage bike stations and locations",
-            onClick = { }
+            onClick = onNavigateToMapDashboard  
         )
 
         Spacer(modifier = Modifier.height(12.dp))
