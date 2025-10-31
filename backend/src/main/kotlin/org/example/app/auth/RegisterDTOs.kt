@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank
 import org.example.app.user.UserRole
 import jakarta.validation.constraints.Size
 import org.example.app.user.Province
+import java.util.UUID
 
 data class RegisterRequest(
     @field:Email @field:NotBlank val email: String,
@@ -16,11 +17,12 @@ data class RegisterRequest(
     @field:NotBlank @field:Size(max = 120) val lastName: String,
     @field:NotBlank @field:Size(max = 120) val username: String,
     val address: AddressPayload,
-    val payment: PaymentPayload? = null
+    val payment: PaymentPayload? = null,
+    val notificationToken: String
 )
 
 data class RegisterResponse(
-    val id: Long,
+    val id: UUID,
     val email: String
 )
 
