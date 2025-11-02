@@ -32,4 +32,3 @@ local.properties
 local.defaults.properties
 secrets.properties
 backend/src/main/resources/bikey-f17f3-firebase-adminsdk-fbsvc-006bc4c19d.json
-.vscode/

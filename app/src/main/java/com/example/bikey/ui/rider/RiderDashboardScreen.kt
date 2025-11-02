@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +33,6 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +45,8 @@ fun RiderDashboardScreen(
     var selectedStation by remember { mutableStateOf<DockingStationResponse?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var panelExpanded by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var selectedFilter by remember { mutableStateOf(BikeFilter.ALL) }
 
     // Load stations
     LaunchedEffect(Unit) {
@@ -53,8 +55,25 @@ fun RiderDashboardScreen(
             if (response.isSuccessful) {
                 stations = response.body() ?: emptyList()
             }
-        } catch (ex: Exception) {
+        } catch (_: Exception) {
             // Handle error silently for now
+        }
+    }
+
+    // Filter stations based on selected filter
+    val filteredStations = remember(stations, selectedFilter) {
+        when (selectedFilter) {
+            BikeFilter.ALL -> stations
+            BikeFilter.EBIKES -> stations.filter { station ->
+                station.docks.any { dock ->
+                    dock.bike != null && dock.bike.isEBike
+                }
+            }
+            BikeFilter.CLASSIC -> stations.filter { station ->
+                station.docks.any { dock ->
+                    dock.bike != null && !dock.bike.isEBike
+                }
+            }
         }
     }
 
@@ -66,9 +85,13 @@ fun RiderDashboardScreen(
         // Map Layer
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState
+            cameraPositionState = cameraPositionState,
+            uiSettings = com.google.maps.android.compose.MapUiSettings(
+                zoomControlsEnabled = false,
+                zoomGesturesEnabled = true
+            )
         ) {
-            stations.forEach { station ->
+            filteredStations.forEach { station ->
                 Marker(
                     state = MarkerState(position = LatLng(station.location.latitude, station.location.longitude)),
                     title = station.name,
@@ -78,6 +101,102 @@ fun RiderDashboardScreen(
                         panelExpanded = true
                     }
                 )
+            }
+        }
+
+        // Filter Button (Top Center)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .zIndex(10f)
+        ) {
+            FloatingActionButton(
+                onClick = { showFilterMenu = !showFilterMenu },
+                containerColor = PureWhite,
+                modifier = Modifier
+                    .height(48.dp)
+                    .widthIn(min = 150.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Filter",
+                        tint = EcoGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = selectedFilter.displayName,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = DarkGreen
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = if (showFilterMenu) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = EcoGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Filter Dropdown Menu
+            DropdownMenu(
+                expanded = showFilterMenu,
+                onDismissRequest = { showFilterMenu = false },
+                modifier = Modifier
+                    .background(PureWhite)
+                    .widthIn(min = 180.dp)
+            ) {
+                BikeFilter.values().forEach { filter ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = when (filter) {
+                                        BikeFilter.ALL -> Icons.Default.Star
+                                        BikeFilter.EBIKES -> Icons.Default.Build
+                                        BikeFilter.CLASSIC -> Icons.Default.Favorite
+                                    },
+                                    contentDescription = null,
+                                    tint = if (selectedFilter == filter) EcoGreen else Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = filter.displayName,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = if (selectedFilter == filter) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (selectedFilter == filter) DarkGreen else Color.DarkGray
+                                    )
+                                )
+                                if (selectedFilter == filter) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = EcoGreen,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            selectedFilter = filter
+                            showFilterMenu = false
+                        }
+                    )
+                }
             }
         }
 
@@ -136,14 +255,20 @@ fun RiderDashboardScreen(
 
         // Hamburger Menu Drawer
         if (showMenu) {
-            HamburgerMenu(
-                username = username,
-                onDismiss = { showMenu = false },
-                onLogout = {
-                    showMenu = false
-                    onLogout()
-                }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(100f)
+            ) {
+                HamburgerMenu(
+                    username = username,
+                    onDismiss = { showMenu = false },
+                    onLogout = {
+                        showMenu = false
+                        onLogout()
+                    }
+                )
+            }
         }
     }
 }
@@ -195,7 +320,7 @@ fun SlideUpPanel(
             if (!isExpanded) {
                 // Collapsed State - Welcome Message
                 Text(
-                    text = "Hi, $username! 👋",
+                    text = "Hi, $username!",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = DarkGreen
@@ -213,7 +338,7 @@ fun SlideUpPanel(
                     StationDetails(selectedStation)
                 } else {
                     Text(
-                        text = "Hi, $username! 👋",
+                        text = "Hi, $username!",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = DarkGreen
@@ -258,19 +383,19 @@ fun StationDetails(station: DockingStationResponse) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             StationStat(
-                icon = Icons.Default.DirectionsBike,
+                icon = Icons.Default.Star,
                 label = "Available Bikes",
                 value = station.numOccupiedDocks.toString(),
                 color = EcoGreen
             )
             StationStat(
-                icon = Icons.Default.Place,
+                icon = Icons.Default.LocationOn,
                 label = "Free Docks",
                 value = station.numFreeDocks.toString(),
-                color = MintDark
+                color = DarkGreen
             )
             StationStat(
-                icon = Icons.Default.Dashboard,
+                icon = Icons.Default.Build,
                 label = "Capacity",
                 value = station.capacity.toString(),
                 color = DarkGreen
@@ -388,106 +513,112 @@ fun HamburgerMenu(
     onDismiss: () -> Unit,
     onLogout: () -> Unit
 ) {
-    ModalDrawerSheet(
-        drawerContainerColor = PureWhite,
-        modifier = Modifier.width(300.dp)
-    ) {
-        // Header
+    Box(modifier = Modifier.fillMaxSize()) {
+
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(EcoGreen)
-                .padding(24.dp)
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable { onDismiss() }
+        )
+
+        // Drawer Sheet on top
+        ModalDrawerSheet(
+            drawerContainerColor = PureWhite,
+            modifier = Modifier
+                .width(300.dp)
+                .fillMaxHeight()
+                .align(Alignment.CenterStart)
         ) {
-            Column {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = null,
-                    tint = PureWhite,
-                    modifier = Modifier.size(64.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = username,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = PureWhite
+            // Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(EcoGreen)
+                    .padding(24.dp)
+            ) {
+                Column {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        tint = PureWhite,
+                        modifier = Modifier.size(64.dp)
                     )
-                )
-                Text(
-                    text = "Rider Account",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = PureWhite.copy(alpha = 0.8f)
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = username,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = PureWhite
+                        )
+                    )
+                    Text(
+                        text = "Rider Account",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PureWhite.copy(alpha = 0.8f)
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Menu Items
+            MenuItemButton(
+                icon = Icons.Default.Person,
+                text = "Edit Profile",
+                onClick = { /* TODO */ }
+            )
+
+            MenuItemButton(
+                icon = Icons.Default.AccountBox,
+                text = "Payment Methods",
+                onClick = { /* TODO */ }
+            )
+
+            MenuItemButton(
+                icon = Icons.Default.DateRange,
+                text = "Ride History",
+                onClick = { /* TODO */ }
+            )
+
+            MenuItemButton(
+                icon = Icons.Default.Favorite,
+                text = "Saved Stations",
+                onClick = { /* TODO */ }
+            )
+
+            MenuItemButton(
+                icon = Icons.Default.Notifications,
+                text = "Notifications",
+                onClick = { /* TODO */ }
+            )
+
+            MenuItemButton(
+                icon = Icons.Default.Settings,
+                text = "Settings",
+                onClick = { /* TODO */ }
+            )
+
+            MenuItemButton(
+                icon = Icons.Default.Info,
+                text = "Help & Support",
+                onClick = { /* TODO */ }
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            HorizontalDivider()
+
+            MenuItemButton(
+                icon = Icons.AutoMirrored.Filled.ExitToApp,
+                text = "Logout",
+                onClick = onLogout,
+                textColor = MaterialTheme.colorScheme.error
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Menu Items
-        MenuItemButton(
-            icon = Icons.Default.Person,
-            text = "Edit Profile",
-            onClick = { /* TODO */ }
-        )
-
-        MenuItemButton(
-            icon = Icons.Default.CreditCard,
-            text = "Payment Methods",
-            onClick = { /* TODO */ }
-        )
-
-        MenuItemButton(
-            icon = Icons.Default.History,
-            text = "Ride History",
-            onClick = { /* TODO */ }
-        )
-
-        MenuItemButton(
-            icon = Icons.Default.Favorite,
-            text = "Saved Stations",
-            onClick = { /* TODO */ }
-        )
-
-        MenuItemButton(
-            icon = Icons.Default.Notifications,
-            text = "Notifications",
-            onClick = { /* TODO */ }
-        )
-
-        MenuItemButton(
-            icon = Icons.Default.Settings,
-            text = "Settings",
-            onClick = { /* TODO */ }
-        )
-
-        MenuItemButton(
-            icon = Icons.Default.Help,
-            text = "Help & Support",
-            onClick = { /* TODO */ }
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Divider()
-
-        MenuItemButton(
-            icon = Icons.Default.Logout,
-            text = "Logout",
-            onClick = onLogout,
-            textColor = MaterialTheme.colorScheme.error
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
-
-    // Dismiss on outside click
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f))
-            .clickable { onDismiss() }
-    )
 }
 
 @Composable
@@ -511,15 +642,28 @@ fun MenuItemButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = textColor,
-                modifier = Modifier.size(24.dp)
+                tint = textColor
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = textColor
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = textColor
+                )
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = "Navigate",
+                tint = Color.LightGray
             )
         }
     }
+}
+
+enum class BikeFilter(val displayName: String) {
+    ALL("All Bikes"),
+    EBIKES("E-Bikes"),
+    CLASSIC("Classic Bikes")
 }
