@@ -1,6 +1,5 @@
 package com.example.bikey.ui.operator
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,65 +12,42 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.bikey.ui.login.LoginState
-
 import com.example.bikey.ui.network.mapAPI
 import com.example.bikey.ui.operator.model.DockingStationResponse
 import com.example.bikey.ui.theme.EcoGreen
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OperatorMapDashboardScreen(
     onNavigateBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val api = mapAPI
     var stations by remember { mutableStateOf<List<DockingStationResponse>>(emptyList()) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
-    val _events = MutableSharedFlow<MapEvent>(
-        replay = 0,
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
 
     LaunchedEffect(Unit) {
         try {
-            Log.d("MapScreen", "Starting API Call")
-            val response = api.map()
-            Log.d("MapScreen", "Response Obtained")
+            val response = mapAPI.map()
             if (response.isSuccessful) {
-                Log.d("MapScreen", "Success")
-                response.body()?.let { body ->
-                    stations = body
-                }
-                Log.d("MapScreen", "Exiting")
+                stations = response.body() ?: emptyList()
             } else {
-                Log.d("MapScreen", "Exception")
-                throw Exception("Bad response: ${response.code()}")
+                errorMsg = "Failed to load stations"
             }
         } catch (ex: Exception) {
-            val err = "Network error. Please check your connection and try again."
-            Log.d("MapScreen", err)
-            errorMsg = err
-            set { copy(isLoading = false, errorMsg = err) }
-            _events.emit(MapEvent.ShowMessage(err))
+            errorMsg = "Network error"
         }
     }
 
-    Log.d("MapScreen", "Preparing")
-    val initialPosition = stations.firstOrNull()?.location
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(initialPosition?.latitude ?: 45.5017, initialPosition?.longitude ?: -73.5673), 12f)
+        position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
-    Log.d("MapScreen", "Done")
 
     Scaffold(
         topBar = {
@@ -86,14 +62,11 @@ fun OperatorMapDashboardScreen(
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(paddingValues)
-        ) {
-            if (stations.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (errorMsg != null) {
                 Text(
-                    text = "⚠️ Failed to load station data or no stations found.",
+                    text = "⚠️ $errorMsg",
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(24.dp).align(Alignment.Center)
                 )
             } else {
@@ -105,21 +78,11 @@ fun OperatorMapDashboardScreen(
                         Marker(
                             state = MarkerState(position = LatLng(station.location.latitude, station.location.longitude)),
                             title = station.name,
-                            snippet = "Bikes: ${station.numOccupiedDocks}/${station.capacity} | Status: ${station.status}",
-
+                            snippet = "Bikes: ${station.numOccupiedDocks}/${station.capacity}"
                         )
                     }
                 }
             }
         }
     }
-}
-
-var state by mutableStateOf(LoginState())
-    private set
-
-private fun set(upd: LoginState.() -> LoginState) { state = state.upd() }
-
-sealed interface MapEvent {
-    data class ShowMessage(val message: String) : MapEvent
 }
