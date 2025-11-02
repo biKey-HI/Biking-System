@@ -19,6 +19,7 @@ class AuthController(
         authService.register(req)
 
     @PostMapping("/login")
-    fun login(@Valid @RequestBody req: LoginRequest): LoginResponse =
-        authService.login(req)
+    fun login(@Valid @RequestBody req: LoginRequest): LoginResponse {
+        return authService.login(req)
+    }
 }

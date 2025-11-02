@@ -1,6 +1,4 @@
-package org.example.app.bmscoreandstationcontrol
-import kotlin.collections.forEach
-
+package org.example.app.bmscoreandstationcontrol.domain
 
 class ReservationExpiryNotifier private constructor(): Notifier {
     companion object {val instance: ReservationExpiryNotifier = ReservationExpiryNotifier()}

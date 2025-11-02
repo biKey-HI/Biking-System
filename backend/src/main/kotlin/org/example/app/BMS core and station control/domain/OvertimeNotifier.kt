@@ -1,9 +1,9 @@
-package org.example.app.bmscoreandstationcontrol
+package org.example.app.bmscoreandstationcontrol.domain
 
 class OvertimeNotifier private constructor(): Notifier {
     companion object {val instance: OvertimeNotifier = OvertimeNotifier()}
 
-    override val observers: MutableList<Sender> = mutableListOf(Notificator.instance, Texter.instance, Emailer.instance)
+    override val observers: MutableList<Sender> = mutableListOf(Notificator.instance, Texter.Companion.instance, Emailer.instance)
 
     override fun notify(message: Array<Any>, notificationToken: String?): Unit {
         require(message.count() == 2 && message[0] is Int && message[1] is Float) {"Incorrect array input."}

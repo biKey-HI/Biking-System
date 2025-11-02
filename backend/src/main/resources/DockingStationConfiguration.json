@@ -1,0 +1,165 @@
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "name": "Concordia",
+    "address": {
+      "line1": "1455 Blvd. De Maisonneuve Ouest",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H3G 1M8",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.49640,
+      "longitude": -73.57876
+    },
+    "status": "Partially Filled",
+    "capacity": 3,
+    "numFreeDocks": 1,
+    "numOccupiedDocks": 2,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 6,
+    "stateChanges": [
+      {
+        "forStationId": "11111111-1111-1111-1111-111111111111",
+        "fromState": "Empty",
+        "toState": "Empty",
+        "atTime": "2025-06-01T08:00:00Z"
+      },
+      {
+        "forStationId": "11111111-1111-1111-1111-111111111111",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-07-02T08:00:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "11111111-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "22222222-aaaa-bbbb-cccc-222222222222",
+        "status": "Occupied",
+        "bike": {
+          "id": "33333333-aaaa-bbbb-cccc-333333333333",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [
+            {
+              "forBikeId": "33333333-aaaa-bbbb-cccc-333333333333",
+              "fromState": "Available",
+              "toState": "Available",
+              "atTime": "2025-11-01T07:30:00Z"
+            }
+          ],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "44444444-aaaa-bbbb-cccc-444444444444",
+        "status": "Occupied",
+        "bike": {
+          "id": "55555555-aaaa-bbbb-cccc-555555555555",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [
+            {
+              "forBikeId": "55555555-aaaa-bbbb-cccc-555555555555",
+              "fromState": "Available",
+              "toState": "Available",
+              "atTime": "2025-01-01T07:30:00Z"
+            },
+            {
+              "forBikeId": "55555555-aaaa-bbbb-cccc-555555555555",
+              "fromState": "Available",
+              "toState": "On Trip",
+              "atTime": "2025-01-02T07:30:00Z"
+            },
+            {
+              "forBikeId": "55555555-aaaa-bbbb-cccc-555555555555",
+              "fromState": "On Trip",
+              "toState": "Available",
+              "atTime": "2025-01-03T07:30:00Z"
+            }
+          ],
+          "isEBike": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "name": "McGill",
+    "address": {
+      "line1": "845 Rue Sherbrooke O",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H3A 0G4",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.50607,
+      "longitude": -73.57744
+    },
+    "status": "Partially Filled",
+    "capacity": 2,
+    "numFreeDocks": 1,
+    "numOccupiedDocks": 1,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 10,
+    "stateChanges": [
+      {
+        "forStationId": "22222222-2222-2222-2222-222222222222",
+        "fromState": "Empty",
+        "toState": "Empty",
+        "atTime": "2025-01-01T08:15:00Z"
+      },
+      {
+        "forStationId": "22222222-2222-2222-2222-222222222222",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-11-01T08:15:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "66666666-aaaa-bbbb-cccc-666666666666",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "77777777-aaaa-bbbb-cccc-777777777777",
+        "status": "Occupied",
+        "bike": {
+          "id": "88888888-aaaa-bbbb-cccc-888888888888",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [
+            {
+              "forBikeId": "88888888-aaaa-bbbb-cccc-888888888888",
+              "fromState": "Available",
+              "toState": "Available",
+              "atTime": "2025-01-01T07:30:00Z"
+            },
+            {
+              "forBikeId": "88888888-aaaa-bbbb-cccc-888888888888",
+              "fromState": "Available",
+              "toState": "On Trip",
+              "atTime": "2025-01-02T07:30:00Z"
+            },
+            {
+              "forBikeId": "88888888-aaaa-bbbb-cccc-888888888888",
+              "fromState": "On Trip",
+              "toState": "Available",
+              "atTime": "2025-11-01T08:15:00Z"
+            }
+          ],
+          "isEBike": true
+        }
+      }
+    ]
+  }
+]
