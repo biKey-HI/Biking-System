@@ -161,5 +161,612 @@
         }
       }
     ]
+  },
+  {
+    "id": "33333333-3333-3333-3333-333333333333",
+    "name": "Place des Arts",
+    "address": {
+      "line1": "175 Rue Sainte-Catherine O",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H2X 1Z8",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.50845,
+      "longitude": -73.56725
+    },
+    "status": "Partially Filled",
+    "capacity": 5,
+    "numFreeDocks": 3,
+    "numOccupiedDocks": 2,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 8,
+    "stateChanges": [
+      {
+        "forStationId": "33333333-3333-3333-3333-333333333333",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-10-15T09:00:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "33333333-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "33333333-aaaa-bbbb-cccc-222222222222",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "33333333-aaaa-bbbb-cccc-333333333333",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "33333333-aaaa-bbbb-cccc-444444444444",
+        "status": "Occupied",
+        "bike": {
+          "id": "33333333-aaaa-1111-bbbb-111111111111",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      },
+      {
+        "id": "33333333-aaaa-bbbb-cccc-555555555555",
+        "status": "Occupied",
+        "bike": {
+          "id": "33333333-aaaa-2222-bbbb-222222222222",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "name": "Old Port",
+    "address": {
+      "line1": "333 Rue de la Commune O",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H2Y 2E2",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.50308,
+      "longitude": -73.55417
+    },
+    "status": "Full",
+    "capacity": 4,
+    "numFreeDocks": 0,
+    "numOccupiedDocks": 4,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 10,
+    "stateChanges": [
+      {
+        "forStationId": "44444444-4444-4444-4444-444444444444",
+        "fromState": "Empty",
+        "toState": "Full",
+        "atTime": "2025-10-20T10:00:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "44444444-aaaa-bbbb-cccc-111111111111",
+        "status": "Occupied",
+        "bike": {
+          "id": "44444444-aaaa-1111-bbbb-111111111111",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      },
+      {
+        "id": "44444444-aaaa-bbbb-cccc-222222222222",
+        "status": "Occupied",
+        "bike": {
+          "id": "44444444-aaaa-2222-bbbb-222222222222",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      },
+      {
+        "id": "44444444-aaaa-bbbb-cccc-333333333333",
+        "status": "Occupied",
+        "bike": {
+          "id": "44444444-aaaa-3333-bbbb-333333333333",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "44444444-aaaa-bbbb-cccc-444444444444",
+        "status": "Occupied",
+        "bike": {
+          "id": "44444444-aaaa-4444-bbbb-444444444444",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "55555555-5555-5555-5555-555555555555",
+    "name": "Jean-Talon Market",
+    "address": {
+      "line1": "7070 Avenue Henri-Julien",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H2S 3S3",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.53541,
+      "longitude": -73.61214
+    },
+    "status": "Partially Filled",
+    "capacity": 6,
+    "numFreeDocks": 4,
+    "numOccupiedDocks": 2,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 7,
+    "stateChanges": [
+      {
+        "forStationId": "55555555-5555-5555-5555-555555555555",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-10-18T08:30:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "55555555-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "55555555-aaaa-bbbb-cccc-222222222222",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "55555555-aaaa-bbbb-cccc-333333333333",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "55555555-aaaa-bbbb-cccc-444444444444",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "55555555-aaaa-bbbb-cccc-555555555555",
+        "status": "Occupied",
+        "bike": {
+          "id": "55555555-aaaa-1111-bbbb-111111111111",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "55555555-aaaa-bbbb-cccc-666666666666",
+        "status": "Occupied",
+        "bike": {
+          "id": "55555555-aaaa-2222-bbbb-222222222222",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "66666666-6666-6666-6666-666666666666",
+    "name": "Mont-Royal Park",
+    "address": {
+      "line1": "1260 Chemin Remembrance",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H3H 1A2",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.50298,
+      "longitude": -73.58781
+    },
+    "status": "Partially Filled",
+    "capacity": 8,
+    "numFreeDocks": 5,
+    "numOccupiedDocks": 3,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 12,
+    "stateChanges": [
+      {
+        "forStationId": "66666666-6666-6666-6666-666666666666",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-10-12T07:00:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "66666666-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "66666666-aaaa-bbbb-cccc-222222222222",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "66666666-aaaa-bbbb-cccc-333333333333",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "66666666-aaaa-bbbb-cccc-444444444444",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "66666666-aaaa-bbbb-cccc-555555555555",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "66666666-aaaa-bbbb-cccc-666666666666",
+        "status": "Occupied",
+        "bike": {
+          "id": "66666666-aaaa-1111-bbbb-111111111111",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "66666666-aaaa-bbbb-cccc-777777777777",
+        "status": "Occupied",
+        "bike": {
+          "id": "66666666-aaaa-2222-bbbb-222222222222",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "66666666-aaaa-bbbb-cccc-888888888888",
+        "status": "Occupied",
+        "bike": {
+          "id": "66666666-aaaa-3333-bbbb-333333333333",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "77777777-7777-7777-7777-777777777777",
+    "name": "Atwater Market",
+    "address": {
+      "line1": "138 Avenue Atwater",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H4C 2G3",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.47598,
+      "longitude": -73.56982
+    },
+    "status": "Empty",
+    "capacity": 4,
+    "numFreeDocks": 4,
+    "numOccupiedDocks": 0,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 8,
+    "stateChanges": [
+      {
+        "forStationId": "77777777-7777-7777-7777-777777777777",
+        "fromState": "Partially Filled",
+        "toState": "Empty",
+        "atTime": "2025-11-01T14:00:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "77777777-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "77777777-aaaa-bbbb-cccc-222222222222",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "77777777-aaaa-bbbb-cccc-333333333333",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "77777777-aaaa-bbbb-cccc-444444444444",
+        "status": "Empty",
+        "bike": null
+      }
+    ]
+  },
+  {
+    "id": "88888888-8888-8888-8888-888888888888",
+    "name": "Olympic Stadium",
+    "address": {
+      "line1": "4545 Avenue Pierre-De Coubertin",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H1V 0B2",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.55780,
+      "longitude": -73.55182
+    },
+    "status": "Partially Filled",
+    "capacity": 7,
+    "numFreeDocks": 3,
+    "numOccupiedDocks": 4,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 10,
+    "stateChanges": [
+      {
+        "forStationId": "88888888-8888-8888-8888-888888888888",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-10-25T11:00:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "88888888-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "88888888-aaaa-bbbb-cccc-222222222222",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "88888888-aaaa-bbbb-cccc-333333333333",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "88888888-aaaa-bbbb-cccc-444444444444",
+        "status": "Occupied",
+        "bike": {
+          "id": "88888888-aaaa-1111-bbbb-111111111111",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      },
+      {
+        "id": "88888888-aaaa-bbbb-cccc-555555555555",
+        "status": "Occupied",
+        "bike": {
+          "id": "88888888-aaaa-2222-bbbb-222222222222",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "88888888-aaaa-bbbb-cccc-666666666666",
+        "status": "Occupied",
+        "bike": {
+          "id": "88888888-aaaa-3333-bbbb-333333333333",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "88888888-aaaa-bbbb-cccc-777777777777",
+        "status": "Occupied",
+        "bike": {
+          "id": "88888888-aaaa-4444-bbbb-444444444444",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "99999999-9999-9999-9999-999999999999",
+    "name": "Biodome",
+    "address": {
+      "line1": "4777 Avenue Pierre-De Coubertin",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H1V 1B3",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.56031,
+      "longitude": -73.54953
+    },
+    "status": "Partially Filled",
+    "capacity": 5,
+    "numFreeDocks": 2,
+    "numOccupiedDocks": 3,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 9,
+    "stateChanges": [
+      {
+        "forStationId": "99999999-9999-9999-9999-999999999999",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-10-22T09:30:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "99999999-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "99999999-aaaa-bbbb-cccc-222222222222",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "99999999-aaaa-bbbb-cccc-333333333333",
+        "status": "Occupied",
+        "bike": {
+          "id": "99999999-aaaa-1111-bbbb-111111111111",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "99999999-aaaa-bbbb-cccc-444444444444",
+        "status": "Occupied",
+        "bike": {
+          "id": "99999999-aaaa-2222-bbbb-222222222222",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      },
+      {
+        "id": "99999999-aaaa-bbbb-cccc-555555555555",
+        "status": "Occupied",
+        "bike": {
+          "id": "99999999-aaaa-3333-bbbb-333333333333",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "name": "Berri-UQAM",
+    "address": {
+      "line1": "1200 Rue Berri",
+      "line2": "",
+      "city": "Montreal",
+      "province": "QC",
+      "postalCode": "H2L 4C2",
+      "country": "CA"
+    },
+    "location": {
+      "latitude": 45.51518,
+      "longitude": -73.56095
+    },
+    "status": "Partially Filled",
+    "capacity": 6,
+    "numFreeDocks": 3,
+    "numOccupiedDocks": 3,
+    "aBikeIsReserved": false,
+    "reservationHoldTime": 8,
+    "stateChanges": [
+      {
+        "forStationId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "fromState": "Empty",
+        "toState": "Partially Filled",
+        "atTime": "2025-10-16T08:00:00Z"
+      }
+    ],
+    "docks": [
+      {
+        "id": "aaaaaaaa-aaaa-bbbb-cccc-111111111111",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "aaaaaaaa-aaaa-bbbb-cccc-222222222222",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "aaaaaaaa-aaaa-bbbb-cccc-333333333333",
+        "status": "Empty",
+        "bike": null
+      },
+      {
+        "id": "aaaaaaaa-aaaa-bbbb-cccc-444444444444",
+        "status": "Occupied",
+        "bike": {
+          "id": "aaaaaaaa-aaaa-1111-bbbb-111111111111",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      },
+      {
+        "id": "aaaaaaaa-aaaa-bbbb-cccc-555555555555",
+        "status": "Occupied",
+        "bike": {
+          "id": "aaaaaaaa-aaaa-2222-bbbb-222222222222",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": false
+        }
+      },
+      {
+        "id": "aaaaaaaa-aaaa-bbbb-cccc-666666666666",
+        "status": "Occupied",
+        "bike": {
+          "id": "aaaaaaaa-aaaa-3333-bbbb-333333333333",
+          "status": "Available",
+          "reservationExpiryTime": null,
+          "statusTransitions": [],
+          "isEBike": true
+        }
+      }
+    ]
   }
 ]
