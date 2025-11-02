@@ -1,4 +1,4 @@
-package org.example.app.bmscoreandstationcontrol
+package org.example.app.bmscoreandstationcontrol.domain
 
 import java.time.Duration
 import java.time.Instant
@@ -6,6 +6,8 @@ import java.util.UUID
 import kotlinx.coroutines.*
 import org.example.app.user.UserRepository
 import org.example.app.user.UserRole
+import org.example.app.user.Address
+import jakarta.persistence.Embeddable
 
 val ok: Unit? = Unit
 val fail: Unit? = null
@@ -14,40 +16,39 @@ val neither: Boolean? = null
 // -- DOCKING STATIONS -- \\
 
 data class DockingStation(val id: UUID = UUID.randomUUID(),
-    var name: String,
-    var address: Address,
-    var location: LatLng,
-    var status: DockingStationState? = null,
-    var capacity: Int = 20,
-    var numFreeDocks: Int = capacity,
-    var numOccupiedDocks: Int = capacity - numFreeDocks,
-    var aBikeIsReserved: Boolean = false,
-    var reservationHoldTime: Duration = Duration.ofMinutes(10),
-    var stateChanges: MutableList<DockingStationStateTransition>?,
-    var dashboard: Dashboard = Dashboard(),
-    var docks: MutableList<Dock> = MutableList(capacity) {Dock()}, // Always include a docks list unless the station's docks are all empty
-    var userRepository: UserRepository,
-    var reservationUserId: UUID? = null // Only when a reservation is ongoing
+  var name: String,
+  var address: Address,
+  var location: LatLng,
+  var status: DockingStationState? = null,
+  var capacity: Int = 20,
+  var numFreeDocks: Int = capacity,
+  var numOccupiedDocks: Int = capacity - numFreeDocks,
+  var aBikeIsReserved: Boolean = false,
+  var reservationHoldTime: Duration = Duration.ofMinutes(10),
+  var stateChanges: MutableList<DockingStationStateTransition>?,
+  var dashboard: Dashboard = Dashboard(),
+  var docks: MutableList<Dock> = MutableList(capacity) {Dock()}, // Always include a docks list unless the station's docks are all empty
+  var reservationUserId: UUID? = null // Only when a reservation is ongoing
 ) {
     val lock = Any()
     val overtimeNotifier: OvertimeNotifier = OvertimeNotifier.instance
     val reservationExpiryNotifier: ReservationExpiryNotifier = ReservationExpiryNotifier.instance
     val tripEndingNotifier: TripEndingNotifier = TripEndingNotifier.instance
     constructor(id: UUID = UUID.randomUUID(),
-    name: String? = null,
-    address: Address,
-    location: LatLng,
-    status: DockingStationState? = null,
-    capacity: Int? = null,
-    numFreeDocks: Int? = null,
-    numOccupiedDocks: Int? = null,
-    aBikeIsReserved: Boolean = false,
-    reservationHoldTime: Duration = Duration.ofMinutes(10),
-    stateChanges: MutableList<DockingStationStateTransition>? = null,
-    dashboard: Dashboard = Dashboard(),
-    docks: MutableList<Dock>? = null,
-    userRepository: UserRepository,
-    reservationUserId: UUID? = null
+                name: String? = null,
+                address: Address,
+                location: LatLng,
+                status: DockingStationState? = null,
+                capacity: Int? = null,
+                numFreeDocks: Int? = null,
+                numOccupiedDocks: Int? = null,
+                aBikeIsReserved: Boolean = false,
+                reservationHoldTime: Duration = Duration.ofMinutes(10),
+                stateChanges: MutableList<DockingStationStateTransition>? = null,
+                dashboard: Dashboard = Dashboard(),
+                docks: MutableList<Dock>? = null,
+                userRepository: UserRepository,
+                reservationUserId: UUID? = null
     ) : this(id = id,
         name = name ?: "",
         address = address,
@@ -61,7 +62,6 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         stateChanges = stateChanges,
         dashboard = dashboard,
         docks = docks ?: MutableList((capacity ?: 20)) {Dock()},
-        userRepository = userRepository,
         reservationUserId = reservationUserId
     ) {
         require(reservationHoldTime > Duration.ZERO) {"A docking station needs to have a reservation hold time."}
@@ -140,14 +140,14 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
         require(this.stateChanges!!.count() > 0) {"A docking station must have at least one state change."}
         require(this.stateChanges!!.last().toState == this.status) {"A docking station's last state change must be the current status."}
 
-        if(name == "") this.name = "${this.address.number} ${this.address.street}"
+        if(name == "") this.name = "${this.address.line1}"
     }
     // Below: null values indicate failure: it does not make sense to call it
     fun bikeIsAvailable(): Boolean? = status?.bikeIsAvailable()
-    fun takeBike(bike: Bicycle, fromReservation: Boolean = false, userId: UUID? = null): Unit? = status?.takeBike(bike, fromReservation, userId)
-    fun returnBike(bike: Bicycle, dockId: UUID? = null, userId: UUID? = null): Unit? = status?.returnBike(bike, dockId, userId)
+    fun takeBike(bike: Bicycle, fromReservation: Boolean = false, userId: UUID? = null, userRepository: UserRepository? = null): Unit? = status?.takeBike(bike, fromReservation, userId, userRepository)
+    fun returnBike(bike: Bicycle, dockId: UUID? = null, userId: UUID? = null, userRepository: UserRepository? = null): Unit? = status?.returnBike(bike, dockId, userId, userRepository)
     fun changeStationStatus(newStatus: DockingStationState): Unit? = status?.changeStationStatus(newStatus)
-    fun reserveBike(bike: Bicycle?, userId: UUID): Unit? = status?.reserveBike(bike, userId)
+    fun reserveBike(bike: Bicycle?, userId: UUID, userRepository: UserRepository? = null): Unit? = status?.reserveBike(bike, userId, userRepository)
 
     fun updateReservation(): Unit? {
         synchronized(lock) {
@@ -175,8 +175,8 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     }
 
     // companion object {
-        fun moveBikeFromThisStation(userId: UUID, bike: Bicycle, toStation: DockingStation, toDockId: UUID? = null): Boolean? { // Only called by operators, not riders
-            if((this.userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
+        fun moveBikeFromThisStation(userId: UUID, bike: Bicycle, toStation: DockingStation, toDockId: UUID? = null, userRepository: UserRepository): Boolean? { // Only called by operators, not riders
+            if((userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
                 val (first, second) = if (this.id < toStation.id) this to toStation else toStation to this // Little trick to prevent deadlocks
                 synchronized(first.lock) {
                     synchronized(second.lock) { // 3-level return indicators:
@@ -196,15 +196,26 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
 // -- STATUSES -- \\
 
 interface DockingStationState {
+    companion object {
+        fun valueOf(station: DockingStation, status: String): DockingStationState? {
+            when(status) {
+                "Empty" -> return Empty(station)
+                "Partially Filled" -> return PartiallyFilled(station)
+                "Full" -> return Full(station)
+                "Out of Service" -> return OutOfService(station)
+                else -> return null
+            }
+        }
+    }
     val station: DockingStation
     fun setStation(station: DockingStation): Unit?
     fun changeStationStatus(status: DockingStationState): Unit?
 
     fun bikeIsAvailable(): Boolean?
 
-    fun takeBike(bike: Bicycle, fromReservation: Boolean? = false, userId: UUID? = null): Unit?
-    fun returnBike(bike: Bicycle, dockId: UUID? = null, userId: UUID? = null): Unit?
-    fun reserveBike(bike: Bicycle? = null, userId: UUID): Unit?
+    fun takeBike(bike: Bicycle, fromReservation: Boolean? = false, userId: UUID? = null, userRepository: UserRepository?): Unit?
+    fun returnBike(bike: Bicycle, dockId: UUID? = null, userId: UUID? = null, userRepository: UserRepository? = null): Unit?
+    fun reserveBike(bike: Bicycle? = null, userId: UUID, userRepository: UserRepository?): Unit?
 }
 
 class Empty(override val station: DockingStation): DockingStationState {
@@ -239,9 +250,9 @@ class Empty(override val station: DockingStation): DockingStationState {
 
     override fun bikeIsAvailable(): Boolean? = false
 
-    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? = fail
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? = fail
-    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? {
+    override fun reserveBike(bike: Bicycle?, userId: UUID, userRepository: UserRepository?): Unit? = fail
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?, userRepository: UserRepository?): Unit? = fail
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?, userRepository: UserRepository?): Unit? {
         synchronized(station.lock) {
             if (bike.status != BikeState.ON_TRIP) return fail
             if (dockId != null && station.docks.firstOrNull { it.id == dockId } == null) return fail
@@ -270,7 +281,7 @@ class Empty(override val station: DockingStation): DockingStationState {
             station.changeStationStatus(PartiallyFilled(station))
             station.changeStationStatus(Full(station))
         }
-        station.tripEndingNotifier.notify(arrayOf(station.name), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+        station.tripEndingNotifier.notify(arrayOf(station.name), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
         return ok
     }
 }
@@ -316,7 +327,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
         }
     }
 
-    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? {
+    override fun reserveBike(bike: Bicycle?, userId: UUID, userRepository: UserRepository?): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
             if (station.aBikeIsReserved) return fail
@@ -343,13 +354,13 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(0), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
             } else {
@@ -373,13 +384,13 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(0), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
             }
@@ -388,7 +399,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
         return ok
     }
 
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? {
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?, userRepository: UserRepository?): Unit? {
         val fromReservation = fromReservation ?: false
 
         synchronized(station.lock) {
@@ -435,19 +446,19 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 CoroutineScope(Dispatchers.Default).launch {
                     delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(-5, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+                        station.overtimeNotifier.notify(arrayOf(-5, 0), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(0, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+                        station.overtimeNotifier.notify(arrayOf(0, 0), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
                     }
                 }
             }
@@ -459,7 +470,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
         return ok
     }
 
-    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? {
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?, userRepository: UserRepository?): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
 
@@ -514,7 +525,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
 
                 station.changeStationStatus(Full(station))
 
-                station.tripEndingNotifier.notify(arrayOf(station.name), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+                station.tripEndingNotifier.notify(arrayOf(station.name), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
             }
         }
         return ok
@@ -560,7 +571,7 @@ class Full(override val station: DockingStation): DockingStationState {
         }
     }
 
-    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? {
+    override fun reserveBike(bike: Bicycle?, userId: UUID, userRepository: UserRepository?): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
             if (station.aBikeIsReserved) return null
@@ -586,13 +597,13 @@ class Full(override val station: DockingStation): DockingStationState {
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(0), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
             } else {
@@ -616,13 +627,13 @@ class Full(override val station: DockingStation): DockingStationState {
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis() - 60000)
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(-1), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(-1), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay(station.reservationHoldTime.toMillis())
                     if(d.bike!!.status == BikeState.RESERVED) {
-                        station.reservationExpiryNotifier.notify(arrayOf(0), station.userRepository.findById(userId).orElse(null)?.notificationToken)
+                        station.reservationExpiryNotifier.notify(arrayOf(0), userRepository?.findById(userId)?.orElse(null)?.notificationToken)
                     }
                 }
             }
@@ -631,7 +642,7 @@ class Full(override val station: DockingStation): DockingStationState {
         return ok
     }
 
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? {
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?, userRepository: UserRepository?): Unit? {
         val fromReservation = fromReservation ?: false
 
         synchronized(station.lock) {
@@ -678,19 +689,19 @@ class Full(override val station: DockingStation): DockingStationState {
                 CoroutineScope(Dispatchers.Default).launch {
                     delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() - 60000*5)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(-5, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+                        station.overtimeNotifier.notify(arrayOf(-5, 0), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis())
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(0, 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+                        station.overtimeNotifier.notify(arrayOf(0, 0), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
                     }
                 }
                 CoroutineScope(Dispatchers.Default).launch {
                     delay((if(d.bike is Bike) {Duration.ofMinutes((0.75*60).toLong())} else {Duration.ofHours(2)}).toMillis() + 60000*60)
                     if(d.bike!!.status == BikeState.ON_TRIP) {
-                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0), station.userRepository.findById(userId ?: UUID.randomUUID()).orElse(null)?.notificationToken)
+                        station.overtimeNotifier.notify(arrayOf(30, d.bike!!.getOvertimeCost() ?: 0), userRepository?.findById(userId ?: UUID.randomUUID())?.orElse(null)?.notificationToken)
                     }
                 }
             }
@@ -703,7 +714,7 @@ class Full(override val station: DockingStation): DockingStationState {
         return ok
     }
 
-    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? {
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?, userRepository: UserRepository?): Unit? {
         synchronized(station.lock) {
             station.updateReservation()
 
@@ -731,6 +742,7 @@ class Full(override val station: DockingStation): DockingStationState {
 }
 
 class OutOfService(override val station: DockingStation): DockingStationState {
+    override fun toString(): String = "Out of Service"
     override fun setStation(station: DockingStation): Unit? {
         synchronized(station.lock) {
             if (station.status is PartiallyFilled || station.status is Full || station.status is Empty) {
@@ -761,9 +773,9 @@ class OutOfService(override val station: DockingStation): DockingStationState {
 
     override fun bikeIsAvailable(): Boolean? = neither
 
-    override fun reserveBike(bike: Bicycle?, userId: UUID): Unit? = fail
-    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?): Unit? = fail
-    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?): Unit? = fail
+    override fun reserveBike(bike: Bicycle?, userId: UUID, userRepository: UserRepository?): Unit? = fail
+    override fun takeBike(bike: Bicycle, fromReservation: Boolean?, userId: UUID?, userRepository: UserRepository?): Unit? = fail
+    override fun returnBike(bike: Bicycle, dockId: UUID?, userId: UUID?, userRepository: UserRepository?): Unit? = fail
 }
 
 
@@ -784,12 +796,19 @@ enum class DockState(val displayName: String) {
     OUT_OF_SERVICE("Out of Service");
 
     override fun toString() = displayName
+
+    companion object {
+        fun fromString(name: String): DockState {
+            return entries.find { it.displayName == name }
+                ?: throw IllegalArgumentException("Unknown BikeState: $name")
+        }
+    }
 }
 
 
 // -- GEOGRAPHICAL POSITIONS -- \\
 
-data class Address(
+/* data class Address(
     val number: Int,
     val street: String,
     val apartment: String? = null,
@@ -809,5 +828,6 @@ data class Address(
         provinceCode = "QC",
         country = "Canada"
     )
-}
-data class LatLng(val latitude: Double, val longitude: Double)
+} */
+
+@Embeddable data class LatLng(val latitude: Double = 0.0, val longitude: Double = 0.0)
