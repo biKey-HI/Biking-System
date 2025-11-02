@@ -10,10 +10,9 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.GET
-import retrofit2.http.POST
 
 interface MapAPI {
-    @POST("api/map")
+    @GET("api/map")
     suspend fun map(): Response<List<DockingStationResponse>>
 }
 private val contentType = "application/json".toMediaType()

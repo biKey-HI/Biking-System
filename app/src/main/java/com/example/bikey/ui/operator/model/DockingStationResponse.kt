@@ -1,5 +1,8 @@
 package com.example.bikey.ui.operator.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class DockingStationResponse(
     val id: String,
     val name: String,
@@ -16,26 +19,30 @@ data class DockingStationResponse(
     val reservationUserId: String? = null
 )
 
+@Serializable
 data class AddressResponse(
     val line1: String,
-    val line2: String?,
+    val line2: String? = null,
     val city: String,
     val province: String,
     val postalCode: String,
     val country: String
 )
 
+@Serializable
 data class LatLngResponse(
     val latitude: Double,
     val longitude: Double
 )
 
+@Serializable
 data class DockResponse(
     val id: String,
-    val bike: BicycleResponse?,
+    val bike: BicycleResponse? = null,
     val status: String
 )
 
+@Serializable
 data class BicycleResponse(
     val id: String,
     val status: String,
@@ -44,6 +51,7 @@ data class BicycleResponse(
     val isEBike: Boolean = false
 )
 
+@Serializable
 data class BikeStateTransitionResponse(
     val forBikeId: String,
     val fromState: String,
@@ -51,6 +59,7 @@ data class BikeStateTransitionResponse(
     val atTime: String
 )
 
+@Serializable
 data class DockingStationStateTransitionResponse(
     val forStationId: String,
     val fromState: String,
