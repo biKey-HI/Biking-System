@@ -1,4 +1,5 @@
-package org.example.app.bmscoreandstationcontrol
+package org.example.app.bmscoreandstationcontrol.domain
+
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.Message
 import com.google.firebase.messaging.Notification

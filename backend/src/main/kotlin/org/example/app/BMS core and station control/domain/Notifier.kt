@@ -1,4 +1,4 @@
-package org.example.app.bmscoreandstationcontrol
+package org.example.app.bmscoreandstationcontrol.domain
 
 interface Notifier {
     val observers: MutableList<Sender>

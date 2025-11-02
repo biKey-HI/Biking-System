@@ -1,4 +1,4 @@
-package org.example.app.bmscoreandstationcontrol
+package org.example.app.bmscoreandstationcontrol.domain
 
 class TripEndingNotifier private constructor(): Notifier {
     companion object {val instance: TripEndingNotifier = TripEndingNotifier()}

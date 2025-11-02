@@ -1,4 +1,4 @@
-package org.example.app.bmscoreandstationcontrol
+package org.example.app.bmscoreandstationcontrol.domain
 
 import java.time.Duration
 import java.time.Instant
@@ -122,7 +122,15 @@ enum class BikeState(val displayName: String) {
     ON_TRIP("On Trip"),
     MAINTENANCE("Maintenance");
 
-    override fun toString() = displayName}
+    override fun toString() = displayName
+
+    companion object {
+        fun fromString(name: String): BikeState {
+            return entries.find { it.displayName == name }
+                ?: throw IllegalArgumentException("Unknown BikeState: $name")
+        }
+    }
+}
 
 data class BikeStateTransition(val forBikeId: UUID,
     val fromState: BikeState,

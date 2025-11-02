@@ -1,4 +1,4 @@
-package org.example.app.bmscoreandstationcontrol
+package org.example.app.bmscoreandstationcontrol.domain
 
 class Texter private constructor(): Sender {
     companion object {val instance: Texter = Texter()}
