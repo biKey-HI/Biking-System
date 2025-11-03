@@ -51,5 +51,12 @@ class User(
     // Role default to Rider
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
-    var role: UserRole = UserRole.RIDER // it always defaults to a rider
+    var role: UserRole = UserRole.RIDER, // it always defaults to a rider
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "paymentStrategy", nullable = false)
+    var paymentStrategy: PaymentStrategyType = PaymentStrategyType.DEFAULT_PAY_NOW,
+
+    @Column(nullable = false)
+    var hasActiveSubscription: Boolean = false
 )
