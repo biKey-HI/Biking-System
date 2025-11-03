@@ -32,14 +32,30 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import kotlinx.coroutines.launch
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.example.bikey.ui.network.bikeAPI
+import com.example.bikey.ui.network.TakeBikeRequest
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import com.google.maps.android.compose.rememberCameraPositionState
 import androidx.compose.foundation.layout.systemBarsPadding
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RiderDashboardScreen(
     riderEmail: String,
     onLogout: () -> Unit
 ) {
+
+    // for debug
+    val context = LocalContext.current
+
     val username = riderEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
     var stations by remember { mutableStateOf<List<DockingStationResponse>>(emptyList()) }
     var selectedStation by remember { mutableStateOf<DockingStationResponse?>(null) }
@@ -49,6 +65,48 @@ fun RiderDashboardScreen(
     var selectedFilter by remember { mutableStateOf(BikeFilter.ALL) }
     var showSearchDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    val bikeApi = bikeAPI
+    var hasActiveRide by remember { mutableStateOf(false) }
+    var activeRideStartMs by remember { mutableStateOf<Long?>(null) }
+    var activeBikeId by remember { mutableStateOf<String?>(null) }
+
+    // Take bike function
+    fun onTakeBike(station: DockingStationResponse) {
+        Log.d("TakeBike", "onTakeBike() called")
+        if (hasActiveRide || station.numOccupiedDocks <= 0)
+            return
+
+        // ui update
+        val prev = stations
+        stations = stations.map {
+            if (it.id == station.id) it.copy(
+                numOccupiedDocks = it.numOccupiedDocks - 1,
+                numFreeDocks = it.numFreeDocks + 1
+            ) else it
+        }
+
+        scope.launch {
+            try {
+                Log.d("TakeBike", "sending request… id=${station.id}") // debug
+                val res = bikeApi.takeBike(TakeBikeRequest(stationId = station.id, userEmail = riderEmail))
+                Log.d("TakeBike", "response: code=${res.code()} msg=${res.message()} bodyNull=${res.body()==null}") // debug
+                val body = if (res.isSuccessful) res.body() else null
+                if (body != null) {
+                    hasActiveRide = true
+                    activeRideStartMs = body.startedAtEpochMs
+                    activeBikeId = body.bikeId
+                    Toast.makeText(context, "Trip started ", Toast.LENGTH_SHORT).show() // debug
+                } else {
+                    stations = prev // on failure
+                    Toast.makeText(context, "Couldn’t start trip (${res.code()})", Toast.LENGTH_SHORT).show() // debug
+
+                }
+            } catch (_: Exception) {
+                stations = prev // on error
+            }
+        }
+    }
 
 
     // Load stations
@@ -275,6 +333,9 @@ fun RiderDashboardScreen(
             selectedStation = selectedStation,
             isExpanded = panelExpanded,
             onExpandChange = { panelExpanded = it },
+            hasActiveRide = hasActiveRide,
+            activeRideStartMs = activeRideStartMs,
+            onTakeBike = { st -> onTakeBike(st) },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -306,10 +367,13 @@ fun SlideUpPanel(
     selectedStation: DockingStationResponse?,
     isExpanded: Boolean,
     onExpandChange: (Boolean) -> Unit,
+    hasActiveRide: Boolean,
+    activeRideStartMs: Long?,
+    onTakeBike: (DockingStationResponse) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val panelHeight by animateFloatAsState(
-        targetValue = if (isExpanded) 0.6f else 0.15f,
+        targetValue = if (isExpanded) 0.8f else 0.15f,
         label = "panelHeight"
     )
 
@@ -329,6 +393,7 @@ fun SlideUpPanel(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
         ) {
             // Drag Handle
@@ -362,7 +427,12 @@ fun SlideUpPanel(
             } else {
                 // Expanded State - Station Details
                 if (selectedStation != null) {
-                    StationDetails(selectedStation)
+                    StationDetails(
+                        station = selectedStation,
+                        hasActiveRide = hasActiveRide,
+                        activeRideStartMs = activeRideStartMs,
+                        onTakeBike = onTakeBike
+                    )
                 } else {
                     Text(
                         text = "Hi, $username!",
@@ -384,7 +454,16 @@ fun SlideUpPanel(
 }
 
 @Composable
-fun StationDetails(station: DockingStationResponse) {
+fun StationDetails(
+    station: DockingStationResponse,
+    hasActiveRide: Boolean,
+    activeRideStartMs: Long?,
+    onTakeBike: (DockingStationResponse) -> Unit
+) {
+
+    // for debug
+    val context = LocalContext.current
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = station.name,
@@ -403,6 +482,42 @@ fun StationDetails(station: DockingStationResponse) {
         )
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        // active ride banner with timer
+        if (hasActiveRide && activeRideStartMs != null) {
+            val elapsedSeconds by produceState(0L) {
+                while (true) {
+                    value = ((System.currentTimeMillis() - activeRideStartMs!!) / 1000)
+                    kotlinx.coroutines.delay(1000)
+                }
+            }
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = EcoGreen)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Trip in progress",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = DarkGreen
+                        )
+                        Text(
+                            text = "Elapsed time: ${elapsedSeconds / 60}m ${elapsedSeconds % 60}s",
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         // Station Stats
         Row(
@@ -477,12 +592,17 @@ fun StationDetails(station: DockingStationResponse) {
         ) {
             // Take Bike
             Button(
-                onClick = { /* TODO: Take bike Logic */ },
+                // debug
+                onClick = { Log.d("TakeBike", "BUTTON onClick for station=${station.name}") // debug
+                    Toast.makeText(context, "Take Bike pressed", Toast.LENGTH_SHORT).show() // debug
+                    onTakeBike(station) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
                 shape = RoundedCornerShape(16.dp),
+                // temporarly force-enabled to rule out disabled state
+                // enabled = true //  debugging
                 enabled = station.numOccupiedDocks > 0
             ) {
                 Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
