@@ -470,23 +470,65 @@ fun StationDetails(station: DockingStationResponse) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Action Button
-        Button(
-            onClick = { /* TODO: Reserve bike */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
-            shape = RoundedCornerShape(16.dp),
-            enabled = station.numOccupiedDocks > 0
+        // Action Buttons
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (station.numOccupiedDocks > 0) "Reserve a Bike" else "No Bikes Available",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = PureWhite
-            )
+            // Take Bike
+            Button(
+                onClick = { /* TODO: Take bike Logic */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
+                shape = RoundedCornerShape(16.dp),
+                enabled = station.numOccupiedDocks > 0
+            ) {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (station.numOccupiedDocks > 0) "Take a Bike" else "No Bikes Available",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = PureWhite
+                )
+            }
+            // Return Bike
+            Button(
+                onClick = { /* TODO: Reserve bike */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
+                shape = RoundedCornerShape(16.dp),
+                enabled = station.numOccupiedDocks > 0
+            ) {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (station.numFreeDocks > 0) "Return a Bike" else "No Docks Available",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = PureWhite
+                )
+            }
+            // Reserve a bike
+            Button(
+                onClick = { /* TODO: Reserve bike */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
+                shape = RoundedCornerShape(16.dp),
+                enabled = station.numOccupiedDocks > 0
+            ) {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (station.numOccupiedDocks > 0) "Reserve a Bike" else "No Bikes Available",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = PureWhite
+                )
+            }
         }
     }
 }
