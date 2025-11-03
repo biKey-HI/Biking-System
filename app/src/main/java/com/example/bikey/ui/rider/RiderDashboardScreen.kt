@@ -33,7 +33,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-
+import androidx.compose.foundation.layout.systemBarsPadding
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RiderDashboardScreen(
@@ -47,6 +47,9 @@ fun RiderDashboardScreen(
     var panelExpanded by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf(BikeFilter.ALL) }
+    var showSearchDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
 
     // Load stations
     LaunchedEffect(Unit) {
@@ -81,7 +84,8 @@ fun RiderDashboardScreen(
         position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()
+        .systemBarsPadding()) {
         // Map Layer
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
@@ -229,7 +233,7 @@ fun RiderDashboardScreen(
                 .zIndex(10f)
         ) {
             FloatingActionButton(
-                onClick = { /* TODO: Search functionality */ },
+                onClick = { showSearchDialog = true },
                 containerColor = PureWhite,
                 modifier = Modifier.size(56.dp)
             ) {
@@ -240,6 +244,29 @@ fun RiderDashboardScreen(
                     modifier = Modifier.size(28.dp)
                 )
             }
+            if (showSearchDialog) {
+                SearchStationDialog(
+                    stations = stations,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    onStationSelected = { station ->
+                        selectedStation = station
+                        panelExpanded = true
+                        showSearchDialog = false
+                        searchQuery = ""
+                        // Optionally move camera to station
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                            LatLng(station.location.latitude, station.location.longitude),
+                            15f
+                        )
+                    },
+                    onDismiss = {
+                        showSearchDialog = false
+                        searchQuery = ""
+                    }
+                )
+            }
+
         }
 
         // Slide-up Panel
@@ -666,4 +693,226 @@ enum class BikeFilter(val displayName: String) {
     ALL("All Bikes"),
     EBIKES("E-Bikes"),
     CLASSIC("Classic Bikes")
+}
+
+
+//Functions to help the search box find the correct station
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchStationDialog(
+    stations: List<DockingStationResponse>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onStationSelected: (DockingStationResponse) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Filter stations based on search query
+    val filteredStations = remember(stations, searchQuery) {
+        if (searchQuery.isBlank()) {
+            stations
+        } else {
+            stations.filter { station ->
+                station.name.contains(searchQuery, ignoreCase = true) ||
+                        station.address.line1.contains(searchQuery, ignoreCase = true) ||
+                        station.address.city.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 600.dp)
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = PureWhite),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Search Stations",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = DarkGreen
+                        )
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.Gray
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Search TextField
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Search by name or address") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = EcoGreen
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EcoGreen,
+                        unfocusedBorderColor = Color.LightGray,
+                        cursorColor = EcoGreen
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Results Count
+                Text(
+                    text = "${filteredStations.size} station${if (filteredStations.size != 1) "s" else ""} found",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                HorizontalDivider()
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Results List
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    if (filteredStations.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = Color.LightGray,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No stations found",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    } else {
+                        filteredStations.forEach { station ->
+                            StationSearchItem(
+                                station = station,
+                                onClick = { onStationSelected(station) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StationSearchItem(
+    station: DockingStationResponse,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(EcoGreen.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = EcoGreen,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Station Info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = DarkGreen
+                    )
+                )
+                Text(
+                    text = "${station.address.line1}, ${station.address.city}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${station.numOccupiedDocks} bike${if (station.numOccupiedDocks != 1) "s" else ""} available",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Medium,
+                        color = if (station.numOccupiedDocks > 0) EcoGreen else Color.Gray
+                    )
+                )
+            }
+
+            // Arrow Icon
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = "Select",
+                tint = Color.LightGray
+            )
+        }
+    }
+    HorizontalDivider()
 }

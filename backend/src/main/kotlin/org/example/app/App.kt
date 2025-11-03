@@ -11,11 +11,12 @@ import org.springframework.boot.runApplication
 class App
 
 fun main(args: Array<String>) {
-    val serviceAccount = App::class.java.getResourceAsStream("/bikey-f17f3-firebase-adminsdk-fbsvc-006bc4c19d.json")
-    val options = FirebaseOptions.builder()
-        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-        .build()
-    FirebaseApp.initializeApp(options)
+    // Comment out Firebase initialization for local development
+    // val serviceAccount = App::class.java.getResourceAsStream("/bikey-f17f3-firebase-adminsdk-fbsvc-006bc4c19d.json")
+    // val options = FirebaseOptions.builder()
+    //     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+    //     .build()
+    // FirebaseApp.initializeApp(options)
 
     runApplication<App>(*args)
 }
