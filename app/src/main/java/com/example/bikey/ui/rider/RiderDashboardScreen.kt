@@ -33,6 +33,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.CheckCircle
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
@@ -41,6 +42,9 @@ import com.example.bikey.ui.network.TakeBikeRequest
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.produceState
+import com.example.bikey.ui.network.ReturnAndSummaryResponse
+import com.example.bikey.ui.network.TripSummaryDTO
+import com.example.bikey.ui.network.CostBreakdownDTO
 import kotlinx.coroutines.delay
 import com.google.maps.android.compose.rememberCameraPositionState
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -58,6 +62,7 @@ fun RiderDashboardScreen(
     riderEmail: String,
     onLogout: () -> Unit
 ) {
+    var showTripSummary by remember { mutableStateOf<ReturnAndSummaryResponse?>(null) }
 
     // for debug
     val context = LocalContext.current
@@ -73,6 +78,7 @@ fun RiderDashboardScreen(
     var searchQuery by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val bikeApi = bikeAPI
+
 
     var activeRide by remember { mutableStateOf<ActiveRideInfo?>(null) }
     val hasActiveRide = activeRide != null
@@ -117,6 +123,7 @@ fun RiderDashboardScreen(
         }
     }
 
+
     // Return bike function
     fun onReturnBike(station: DockingStationResponse) {
         Log.d("ReturnBike", "onReturnBike() called")
@@ -146,9 +153,13 @@ fun RiderDashboardScreen(
                     activeRide = null
 
                     // Show summary to user
-                    response?.summary?.let { summary ->
-                        Log.d("TripSummary", "Cost: $${summary.cost.totalCents / 100.0}")
-                        Toast.makeText(context, "Trip completed! Cost: $${summary.cost.totalCents / 100.0}", Toast.LENGTH_LONG).show()
+//                    response?.summary?.let { summary ->
+//                        Log.d("TripSummary", "Cost: $${summary.cost.totalCents / 100.0}")
+//                        Toast.makeText(context, "Trip completed! Cost: $${summary.cost.totalCents / 100.0}", Toast.LENGTH_LONG).show()
+//                    }
+
+                    response?.let {
+                        showTripSummary = it
                     }
 
                     Toast.makeText(context, "Bike returned successfully!", Toast.LENGTH_SHORT).show()
@@ -205,221 +216,237 @@ fun RiderDashboardScreen(
         position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
 
-    Box(modifier = Modifier.fillMaxSize()
-        .systemBarsPadding()) {
-        // Map Layer
-        GoogleMap(
-            modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-            uiSettings = com.google.maps.android.compose.MapUiSettings(
-                zoomControlsEnabled = false,
-                zoomGesturesEnabled = true
-            )
-        ) {
-            filteredStations.forEach { station ->
-                Marker(
-                    state = MarkerState(position = LatLng(station.location.latitude, station.location.longitude)),
-                    title = station.name,
-                    snippet = "Available bikes: ${station.numOccupiedDocks}",
-                    onInfoWindowClick = {
-                        selectedStation = station
-                        panelExpanded = true
-                    }
-                )
-            }
-        }
-
-        // Filter Button (Top Center)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-                .zIndex(10f)
-        ) {
-            FloatingActionButton(
-                onClick = { showFilterMenu = !showFilterMenu },
-                containerColor = PureWhite,
-                modifier = Modifier
-                    .height(48.dp)
-                    .widthIn(min = 150.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Filter",
-                        tint = EcoGreen,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = selectedFilter.displayName,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = DarkGreen
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = if (showFilterMenu) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = EcoGreen,
-                        modifier = Modifier.size(20.dp)
-                    )
+    if (showTripSummary != null) {
+            TripSummaryScreen(
+                summary = showTripSummary!!,
+                onDone = {
+                    showTripSummary = null
                 }
-            }
-
-            // Filter Dropdown Menu
-            DropdownMenu(
-                expanded = showFilterMenu,
-                onDismissRequest = { showFilterMenu = false },
-                modifier = Modifier
-                    .background(PureWhite)
-                    .widthIn(min = 180.dp)
+            )
+    } else {
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .systemBarsPadding()
+        ) {
+            // Map Layer
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                uiSettings = com.google.maps.android.compose.MapUiSettings(
+                    zoomControlsEnabled = false,
+                    zoomGesturesEnabled = true
+                )
             ) {
-                BikeFilter.values().forEach { filter ->
-                    DropdownMenuItem(
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = when (filter) {
-                                        BikeFilter.ALL -> Icons.Default.Star
-                                        BikeFilter.EBIKES -> Icons.Default.Build
-                                        BikeFilter.CLASSIC -> Icons.Default.Favorite
-                                    },
-                                    contentDescription = null,
-                                    tint = if (selectedFilter == filter) EcoGreen else Color.Gray,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = filter.displayName,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = if (selectedFilter == filter) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (selectedFilter == filter) DarkGreen else Color.DarkGray
-                                    )
-                                )
-                                if (selectedFilter == filter) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = "Selected",
-                                        tint = EcoGreen,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        },
-                        onClick = {
-                            selectedFilter = filter
-                            showFilterMenu = false
+                filteredStations.forEach { station ->
+                    Marker(
+                        state = MarkerState(
+                            position = LatLng(
+                                station.location.latitude,
+                                station.location.longitude
+                            )
+                        ),
+                        title = station.name,
+                        snippet = "Available bikes: ${station.numOccupiedDocks}",
+                        onInfoWindowClick = {
+                            selectedStation = station
+                            panelExpanded = true
                         }
                     )
                 }
             }
-        }
 
-        // Hamburger Menu Button (Top Left)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp)
-                .zIndex(10f)
-        ) {
-            FloatingActionButton(
-                onClick = { showMenu = true },
-                containerColor = PureWhite,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = EcoGreen,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-
-        // Search Button (Top Right)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .zIndex(10f)
-        ) {
-            FloatingActionButton(
-                onClick = { showSearchDialog = true },
-                containerColor = PureWhite,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = EcoGreen,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            if (showSearchDialog) {
-                SearchStationDialog(
-                    stations = stations,
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    onStationSelected = { station ->
-                        selectedStation = station
-                        panelExpanded = true
-                        showSearchDialog = false
-                        searchQuery = ""
-                        // Optionally move camera to station
-                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
-                            LatLng(station.location.latitude, station.location.longitude),
-                            15f
-                        )
-                    },
-                    onDismiss = {
-                        showSearchDialog = false
-                        searchQuery = ""
-                    }
-                )
-            }
-
-        }
-
-        // Slide-up Panel
-        SlideUpPanel(
-            username = username,
-            selectedStation = selectedStation,
-            isExpanded = panelExpanded,
-            onExpandChange = { panelExpanded = it },
-            hasActiveRide = hasActiveRide,
-            activeRideStartMs = activeRideStartMs,
-            onTakeBike = { st -> onTakeBike(st) },
-            onReturnBike = { st -> onReturnBike(st) },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-        )
-
-        // Hamburger Menu Drawer
-        if (showMenu) {
+            // Filter Button (Top Center)
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(100f)
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+                    .zIndex(10f)
             ) {
-                HamburgerMenu(
-                    username = username,
-                    onDismiss = { showMenu = false },
-                    onLogout = {
-                        showMenu = false
-                        onLogout()
+                FloatingActionButton(
+                    onClick = { showFilterMenu = !showFilterMenu },
+                    containerColor = PureWhite,
+                    modifier = Modifier
+                        .height(48.dp)
+                        .widthIn(min = 150.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Filter",
+                            tint = EcoGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = selectedFilter.displayName,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = DarkGreen
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = if (showFilterMenu) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = EcoGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
-                )
+                }
+
+                // Filter Dropdown Menu
+                DropdownMenu(
+                    expanded = showFilterMenu,
+                    onDismissRequest = { showFilterMenu = false },
+                    modifier = Modifier
+                        .background(PureWhite)
+                        .widthIn(min = 180.dp)
+                ) {
+                    BikeFilter.values().forEach { filter ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = when (filter) {
+                                            BikeFilter.ALL -> Icons.Default.Star
+                                            BikeFilter.EBIKES -> Icons.Default.Build
+                                            BikeFilter.CLASSIC -> Icons.Default.Favorite
+                                        },
+                                        contentDescription = null,
+                                        tint = if (selectedFilter == filter) EcoGreen else Color.Gray,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = filter.displayName,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = if (selectedFilter == filter) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (selectedFilter == filter) DarkGreen else Color.DarkGray
+                                        )
+                                    )
+                                    if (selectedFilter == filter) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = EcoGreen,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = {
+                                selectedFilter = filter
+                                showFilterMenu = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Hamburger Menu Button (Top Left)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+                    .zIndex(10f)
+            ) {
+                FloatingActionButton(
+                    onClick = { showMenu = true },
+                    containerColor = PureWhite,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = EcoGreen,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            // Search Button (Top Right)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .zIndex(10f)
+            ) {
+                FloatingActionButton(
+                    onClick = { showSearchDialog = true },
+                    containerColor = PureWhite,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = EcoGreen,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                if (showSearchDialog) {
+                    SearchStationDialog(
+                        stations = stations,
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        onStationSelected = { station ->
+                            selectedStation = station
+                            panelExpanded = true
+                            showSearchDialog = false
+                            searchQuery = ""
+                            // Optionally move camera to station
+                            cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                                LatLng(station.location.latitude, station.location.longitude),
+                                15f
+                            )
+                        },
+                        onDismiss = {
+                            showSearchDialog = false
+                            searchQuery = ""
+                        }
+                    )
+                }
+
+            }
+
+            // Slide-up Panel
+            SlideUpPanel(
+                username = username,
+                selectedStation = selectedStation,
+                isExpanded = panelExpanded,
+                onExpandChange = { panelExpanded = it },
+                hasActiveRide = hasActiveRide,
+                activeRideStartMs = activeRideStartMs,
+                onTakeBike = { st -> onTakeBike(st) },
+                onReturnBike = { st -> onReturnBike(st) },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            )
+
+            // Hamburger Menu Drawer
+            if (showMenu) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(100f)
+                ) {
+                    HamburgerMenu(
+                        username = username,
+                        onDismiss = { showMenu = false },
+                        onLogout = {
+                            showMenu = false
+                            onLogout()
+                        }
+                    )
+                }
             }
         }
     }
@@ -1146,27 +1173,148 @@ fun StationSearchItem(
     }
     HorizontalDivider()
 }
-//@Composable
-//fun TripSummaryDialog(
-//    summary: TripSummaryDTO,
-//    onDismiss: () -> Unit
-//) {
-//    AlertDialog(
-//        onDismissRequest = onDismiss,
-//        title = { Text("Trip Summary", style = MaterialTheme.typography.headlineSmall) },
-//        text = {
-//            Column {
-//                Text("Duration: ${summary.durationMinutes} minutes")
-//                Text("Start: ${summary.startStationName}")
-//                Text("End: ${summary.endStationName}")
-//                Text("Bike: ${if (summary.isEBike) "E-Bike" else "Classic Bike"}")
-//                Text("Total: $${summary.cost.totalCents / 100.0}")
-//            }
-//        },
-//        confirmButton = {
-//            Button(onClick = onDismiss) {
-//                Text("OK")
-//            }
-//        }
-//    )
-//}
+
+
+@Composable
+fun TripSummaryScreen(
+    summary: ReturnAndSummaryResponse,
+    onDone: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Success Icon
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = EcoGreen,
+            modifier = Modifier.size(80.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Trip Completed!",
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = DarkGreen
+            )
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Trip Details Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                TripDetailItem("Start", summary.summary.startStationName)
+                TripDetailItem("End", summary.summary.endStationName)
+                TripDetailItem("Duration", "${summary.summary.durationMinutes} minutes")
+                TripDetailItem("Bike Type", if (summary.summary.isEBike) "E-Bike" else "Classic Bike")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Cost Breakdown Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Cost Breakdown",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = DarkGreen
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                with(summary.summary.cost) {
+                    CostItem("Base fare", baseCents)
+                    CostItem("Time ($minutes mins)", perMinuteCents * minutes)
+                    eBikeSurchargeCents?.let { CostItem("E-Bike surcharge", it) }
+                    overtimeCents?.let { CostItem("Overtime charges", it) }
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    CostItem("Total", totalCents, isTotal = true)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Done Button
+        Button(
+            onClick = onDone,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text(
+                text = "Done",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = PureWhite
+            )
+        }
+    }
+}
+
+@Composable
+private fun TripDetailItem(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = DarkGreen
+        )
+    }
+}
+
+@Composable
+private fun CostItem(label: String, cents: Int, isTotal: Boolean = false) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
+            ),
+            color = if (isTotal) DarkGreen else Color.Gray
+        )
+        Text(
+            text = "$${cents / 100.0}",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
+            ),
+            color = if (isTotal) DarkGreen else Color.Gray
+        )
+    }
+}
