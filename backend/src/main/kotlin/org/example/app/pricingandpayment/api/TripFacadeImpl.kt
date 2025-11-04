@@ -26,6 +26,7 @@ class TripFacadeImpl(
         destStationId: UUID,
         dockId: String?
     ): BillingService.TripDomain {
+
         // 1) Load from persistence
         val bikeEntity: BicycleEntity = bikes.findById(tripId).orElseThrow()
         val destEntity: DockingStationEntity = stations.findById(destStationId).orElseThrow()
@@ -81,7 +82,7 @@ class TripFacadeImpl(
         )
     }
 
-    // ---------- helpers ----------
+    // helpers
 
     private fun buildTripDomainAfterReturn(
         tripId: UUID,
@@ -105,7 +106,7 @@ class TripFacadeImpl(
             id = tripId,
             riderId = UUID.nameUUIDFromBytes("rider".toByteArray()), // replace with real riderId when available
             bikeId = bike.id,
-            startStationName = "Unknown", // fill from your trip store if you track it
+            startStationName = "Unknown",
             endStationName = endStationName,
             startTime = start,
             endTime = end,
