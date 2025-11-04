@@ -7,8 +7,8 @@ data class CostBreakdownDTO(
     val baseCents: Int,
     val perMinuteCents: Int,
     val minutes: Int,
-    val eBikeSurchargeCents: Int,
-    val overtimeCents: Int,
+    val eBikeSurchargeCents: Int?=null,
+    val overtimeCents: Int?=null,
     val totalCents: Int
 )
 
