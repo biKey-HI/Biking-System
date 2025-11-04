@@ -13,12 +13,61 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 
 @Serializable
 data class TakeBikeRequest(val stationId: String, val userEmail: String)
+
 @Serializable
-data class TakeBikeResponse(val bikeId: String, val startedAtEpochMs: Long)
+data class TakeBikeResponse(
+    val bikeId: String,
+    val tripId: String,
+    val startedAtEpochMs: Long
+)
+
+@Serializable
+data class ReturnBikeRequest(
+    val tripId: String,
+    val destStationId: String,
+    val dockId: String? = null
+)
+
+@Serializable
+data class CostBreakdownDTO(
+    val baseCents: Int,
+    val perMinuteCents: Int,
+    val minutes: Int,
+    val eBikeSurchargeCents: Int,
+    val overtimeCents: Int,
+    val totalCents: Int
+)
+
+@Serializable
+data class TripSummaryDTO(
+    val tripId: String,
+    val riderId: String,
+    val bikeId: String,
+    val startStationName: String,
+    val endStationName: String,
+    val startTime: String,
+    val endTime: String,
+    val durationMinutes: Int,
+    val isEBike: Boolean,
+    val cost: CostBreakdownDTO
+)
+
+@Serializable
+data class ReturnAndSummaryResponse(
+    val summary: TripSummaryDTO,
+    val paymentStrategy: String,
+    val requiresImmediatePayment: Boolean,
+    val hasSavedCard: Boolean,
+    val savedCardLast4: String? = null,
+    val provider: String? = null
+)
 
 interface BikeAPI {
     @POST("api/take-bike")
     suspend fun takeBike(@Body body: TakeBikeRequest): Response<TakeBikeResponse>
+
+    @POST("api/return")
+    suspend fun returnBike(@Body body: ReturnBikeRequest): Response<ReturnAndSummaryResponse>
 }
 
 private val bikeClient = OkHttpClient.Builder()

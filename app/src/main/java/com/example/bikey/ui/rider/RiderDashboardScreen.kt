@@ -46,6 +46,12 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import androidx.compose.foundation.layout.systemBarsPadding
 
 
+data class ActiveRideInfo(
+    val bikeId: String,
+    val tripId: String,
+    val startedAtMs: Long
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RiderDashboardScreen(
@@ -67,9 +73,10 @@ fun RiderDashboardScreen(
     var searchQuery by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val bikeApi = bikeAPI
-    var hasActiveRide by remember { mutableStateOf(false) }
-    var activeRideStartMs by remember { mutableStateOf<Long?>(null) }
-    var activeBikeId by remember { mutableStateOf<String?>(null) }
+
+    var activeRide by remember { mutableStateOf<ActiveRideInfo?>(null) }
+    val hasActiveRide = activeRide != null
+    val activeRideStartMs = activeRide?.startedAtMs
 
     // Take bike function
     fun onTakeBike(station: DockingStationResponse) {
@@ -93,9 +100,11 @@ fun RiderDashboardScreen(
                 Log.d("TakeBike", "response: code=${res.code()} msg=${res.message()} bodyNull=${res.body()==null}") // debug
                 val body = if (res.isSuccessful) res.body() else null
                 if (body != null) {
-                    hasActiveRide = true
-                    activeRideStartMs = body.startedAtEpochMs
-                    activeBikeId = body.bikeId
+                    activeRide = ActiveRideInfo(
+                        bikeId = body.bikeId,
+                        tripId = body.tripId,
+                        startedAtMs = body.startedAtEpochMs
+                    )
                     Toast.makeText(context, "Trip started ", Toast.LENGTH_SHORT).show() // debug
                 } else {
                     stations = prev // on failure
@@ -107,6 +116,60 @@ fun RiderDashboardScreen(
             }
         }
     }
+
+    // Return bike function
+    fun onReturnBike(station: DockingStationResponse) {
+        Log.d("ReturnBike", "onReturnBike() called")
+        Log.d("ReturnBike", "hasActiveRide: $hasActiveRide, stationFreeDocks: ${station.numFreeDocks}")
+        if (!hasActiveRide || station.numFreeDocks <= 0)
+            return
+
+        scope.launch {
+            try {
+                val activeTripId = activeRide?.tripId ?: return@launch
+                Log.d("ReturnBike", "Active trip ID: $activeTripId")
+                Log.d("ReturnBike", "Destination station ID: ${station.id}")
+                // val bikeId = activeRide?.tripId: return@launch
+                val returnRequest = com.example.bikey.ui.network.ReturnBikeRequest(
+                    tripId = activeTripId,
+                    destStationId = station.id,
+                    dockId = null // auto-assign dock
+                )
+
+                Log.d("ReturnBike", "Sending return request...")
+                val res = bikeApi.returnBike(returnRequest)
+                Log.d("ReturnBike", "Response code: ${res.code()}")
+                Log.d("ReturnBike", "Response message: ${res.message()}")
+                Log.d("ReturnBike", "Response isSuccessful: ${res.isSuccessful}")
+                if (res.isSuccessful) {
+                    val response = res.body()
+                    activeRide = null
+
+                    // Show summary to user
+                    response?.summary?.let { summary ->
+                        Log.d("TripSummary", "Cost: $${summary.cost.totalCents / 100.0}")
+                        Toast.makeText(context, "Trip completed! Cost: $${summary.cost.totalCents / 100.0}", Toast.LENGTH_LONG).show()
+                    }
+
+                    Toast.makeText(context, "Bike returned successfully!", Toast.LENGTH_SHORT).show()
+
+                    // refresh stations
+                    val stationsResponse = mapAPI.map()
+                    if (stationsResponse.isSuccessful) {
+                        stations = stationsResponse.body() ?: emptyList()
+                    }
+                } else {
+                    val errorBody = res.errorBody()?.string()
+                    Log.e("ReturnBike", "Failed response - Code: ${res.code()}, Error: $errorBody")
+                    Toast.makeText(context, "Failed to return bike", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("ReturnBike", "Error returning bike", e)
+                Toast.makeText(context, "Error returning bike", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 
 
     // Load stations
@@ -336,6 +399,7 @@ fun RiderDashboardScreen(
             hasActiveRide = hasActiveRide,
             activeRideStartMs = activeRideStartMs,
             onTakeBike = { st -> onTakeBike(st) },
+            onReturnBike = { st -> onReturnBike(st) },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -370,6 +434,7 @@ fun SlideUpPanel(
     hasActiveRide: Boolean,
     activeRideStartMs: Long?,
     onTakeBike: (DockingStationResponse) -> Unit,
+    onReturnBike: (DockingStationResponse) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val panelHeight by animateFloatAsState(
@@ -431,7 +496,8 @@ fun SlideUpPanel(
                         station = selectedStation,
                         hasActiveRide = hasActiveRide,
                         activeRideStartMs = activeRideStartMs,
-                        onTakeBike = onTakeBike
+                        onTakeBike = onTakeBike,
+                        onReturnBike = onReturnBike
                     )
                 } else {
                     Text(
@@ -458,7 +524,8 @@ fun StationDetails(
     station: DockingStationResponse,
     hasActiveRide: Boolean,
     activeRideStartMs: Long?,
-    onTakeBike: (DockingStationResponse) -> Unit
+    onTakeBike: (DockingStationResponse) -> Unit,
+    onReturnBike: (DockingStationResponse) -> Unit
 ) {
 
     // for debug
@@ -615,13 +682,14 @@ fun StationDetails(
             }
             // Return Bike
             Button(
-                onClick = { /* TODO: Reserve bike */ },
+                onClick = { Log.d("ReturnBike", "Return Bike pressed for station=${station.name}")
+                    onReturnBike(station)  },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
                 shape = RoundedCornerShape(16.dp),
-                enabled = station.numOccupiedDocks > 0
+                enabled = hasActiveRide && station.numFreeDocks > 0
             ) {
                 Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -1078,3 +1146,27 @@ fun StationSearchItem(
     }
     HorizontalDivider()
 }
+//@Composable
+//fun TripSummaryDialog(
+//    summary: TripSummaryDTO,
+//    onDismiss: () -> Unit
+//) {
+//    AlertDialog(
+//        onDismissRequest = onDismiss,
+//        title = { Text("Trip Summary", style = MaterialTheme.typography.headlineSmall) },
+//        text = {
+//            Column {
+//                Text("Duration: ${summary.durationMinutes} minutes")
+//                Text("Start: ${summary.startStationName}")
+//                Text("End: ${summary.endStationName}")
+//                Text("Bike: ${if (summary.isEBike) "E-Bike" else "Classic Bike"}")
+//                Text("Total: $${summary.cost.totalCents / 100.0}")
+//            }
+//        },
+//        confirmButton = {
+//            Button(onClick = onDismiss) {
+//                Text("OK")
+//            }
+//        }
+//    )
+//}

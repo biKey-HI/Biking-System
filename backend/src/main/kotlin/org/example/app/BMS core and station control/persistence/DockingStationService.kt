@@ -23,12 +23,13 @@ class DockingStationService(
         dockingStation.takeBike(bike, fromReservation, userId, userRepository)
 
     fun returnBike(
-        dockingStation: DockingStation,
+        destStation: DockingStation,
         bike: Bicycle,
         dockId: UUID? = null,
-        userId: UUID? = null
-    ): Unit? =
-        dockingStation.returnBike(bike, dockId, userId, userRepository)
+        userId: UUID
+    ): Unit? {
+        return destStation.returnBike(bike, dockId, userId, userRepository)
+    }
 
     fun changeStationStatus(
         dockingStation: DockingStation,
