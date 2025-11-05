@@ -52,6 +52,7 @@ fun RiderDashboardScreen(
     var searchQuery by remember { mutableStateOf("") }
 
 
+
     // Load stations
     LaunchedEffect(Unit) {
         try {
@@ -85,7 +86,8 @@ fun RiderDashboardScreen(
         position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
 
-    Box(modifier = Modifier.fillMaxSize()
+    Box(modifier = Modifier
+        .fillMaxSize()
         .systemBarsPadding()) {
         // Map Layer
         GoogleMap(
@@ -276,6 +278,9 @@ fun RiderDashboardScreen(
             selectedStation = selectedStation,
             isExpanded = panelExpanded,
             onExpandChange = { panelExpanded = it },
+            onReserveBike = {
+                onReserveBike()
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -307,6 +312,7 @@ fun SlideUpPanel(
     selectedStation: DockingStationResponse?,
     isExpanded: Boolean,
     onExpandChange: (Boolean) -> Unit,
+    onReserveBike: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val panelHeight by animateFloatAsState(
@@ -363,7 +369,9 @@ fun SlideUpPanel(
             } else {
                 // Expanded State - Station Details
                 if (selectedStation != null) {
-                    StationDetails(selectedStation)
+                    StationDetails(
+                        station = selectedStation,
+                        onReserveBike = onReserveBike )
                 } else {
                     Text(
                         text = "Hi, $username!",
@@ -385,7 +393,9 @@ fun SlideUpPanel(
 }
 
 @Composable
-fun StationDetails(station: DockingStationResponse) {
+fun StationDetails(
+    station: DockingStationResponse,
+    onReserveBike: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = station.name,
