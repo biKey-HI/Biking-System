@@ -81,7 +81,8 @@ fun PricingScreen(
             ),
             isPopular = false,
             isSelecting = onRegister == null,
-            pricingPlan = PricingPlan.DEFAULT_PAY_NOW
+            pricingPlan = PricingPlan.DEFAULT_PAY_NOW,
+            onBack = onBack
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -98,7 +99,8 @@ fun PricingScreen(
             ),
             isPopular = true,
             isSelecting = onRegister == null,
-            pricingPlan = PricingPlan.MONTHLY_SUBSCRIPTION
+            pricingPlan = PricingPlan.MONTHLY_SUBSCRIPTION,
+            onBack = onBack
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -115,7 +117,8 @@ fun PricingScreen(
             ),
             isPopular = false,
             isSelecting = onRegister == null,
-            pricingPlan = PricingPlan.ANNUAL_SUBSCRIPTION
+            pricingPlan = PricingPlan.ANNUAL_SUBSCRIPTION,
+            onBack = onBack
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -175,7 +178,8 @@ fun PricingCard(
     features: List<String>,
     isPopular: Boolean,
     isSelecting: Boolean = false,
-    pricingPlan: PricingPlan
+    pricingPlan: PricingPlan,
+    onBack: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     val _events = MutableSharedFlow<PricingPlanEvent>(
@@ -340,7 +344,7 @@ fun PricingCard(
                                     val planChange = if(pricingPlan == PricingPlan.DEFAULT_PAY_NOW) "Updated" else "Purchased"
                                     set { copy(isLoading = false, successMsg = "Successfully ${planChange.lowercase()} pricing plan!") }
                                     _events.emit(PricingPlanEvent.Success("Pricing Plan ${planChange}!", pricingPlan))
-                                    UserContext.nav?.navigate("home")
+                                    onBack()
                                 } else {
                                     val err = "Operation failed."
                                     set { copy(isLoading = false, errorMsg = err) }

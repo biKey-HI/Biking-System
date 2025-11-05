@@ -1260,7 +1260,7 @@ fun TripSummaryScreen(
                     eBikeSurchargeCents?.let { CostItem("Electricity rate ($minutes mins)", it) }
                     overtimeCents?.let { if(overtimeCents != 0) CostItem("Overtime charges", it) }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
-                    CostItem("Total", totalCents, isTotal = true)
+                    CostItem("Total", maxOf(totalCents, (if(UserContext.pricingPlan == PricingPlan.DEFAULT_PAY_NOW) baseCents else 0) + (eBikeSurchargeCents ?: 0) + (overtimeCents ?: 0)), isTotal = true)
                 }
             }
         }
