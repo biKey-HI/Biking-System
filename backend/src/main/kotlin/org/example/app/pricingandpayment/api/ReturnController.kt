@@ -2,6 +2,7 @@ package org.example.app.pricingandpayment.api
 
 import org.example.app.billing.BillingService
 import org.example.app.billing.ReturnAndSummaryResponse
+import org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
 import org.example.app.pricingandpayment.PaymentService
 import org.example.app.user.PaymentStrategyType
 import org.example.app.user.UserRepository
@@ -15,6 +16,7 @@ import java.util.UUID
 @RequestMapping("/api/return")
 class ReturnController(
     private val users: UserRepository,
+    private val bikes: BicycleRepository,
     private val billing: BillingService,
     private val payments: PaymentService,
     private val tripFacade: TripFacade
@@ -53,12 +55,12 @@ class ReturnController(
                 throw ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found or cannot complete")
             }
 
-            val summary = billing.summarize(trip)
-
             val rider = users.findById(trip.riderId).orElseThrow {
                 logger.warn("Rider not found for id=${trip.riderId}")
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Rider not found")
             }
+
+            val summary = billing.summarize(trip, bikes, rider.paymentStrategy)
 
             val requiresPayment = payments.requiresImmediatePayment(rider) && summary.cost.totalCents > 0
             val saved = payments.getSavedCard(rider.id!!)
@@ -88,9 +90,10 @@ class ReturnController(
         // parse trip id string -> UUID for internal facade
         try {
             val tripUuid = UUID.fromString(req.tripId)
+            val user = users.findById(userId).orElseThrow()
             payments.handlePayment(
-                users.findById(userId).orElseThrow(),
-                billing.summarize(tripFacade.getTripDomain(tripUuid))
+                user,
+                billing.summarize(tripFacade.getTripDomain(tripUuid), bikes, user.paymentStrategy)
             )
         } catch (e: IllegalArgumentException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid tripId")

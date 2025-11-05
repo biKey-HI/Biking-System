@@ -1,9 +1,13 @@
 package org.example.app.billing
 
-import org.example.app.billing.TripSummaryDTO
+import org.example.app.bmscoreandstationcontrol.domain.Bicycle
+import org.example.app.bmscoreandstationcontrol.persistence.BicycleEntity
+import org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.util.UUID
+import org.example.app.user.PaymentStrategyType
+import java.util.Optional
 
 @Service
 class BillingService(private val pricing: PricingService) {
@@ -21,9 +25,11 @@ class BillingService(private val pricing: PricingService) {
         val overtimeCents: Int
     )
 
-    fun summarize(trip: TripDomain): TripSummaryDTO {
+    fun summarize(trip: TripDomain, bikes: BicycleRepository, pricingPlan: PaymentStrategyType): TripSummaryDTO {
         val minutes = Duration.between(trip.startTime, trip.endTime).toMinutes().toInt().coerceAtLeast(0)
-        val cost = pricing.price(minutes, trip.isEBike, trip.overtimeCents)
+        val bikeOpt: Optional<BicycleEntity>? = bikes.findById(trip.bikeId)
+        val bike: BicycleEntity? = bikeOpt?.orElse(null)
+        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0)
         return TripSummaryDTO(
             tripId = trip.id,
             riderId = trip.riderId,
