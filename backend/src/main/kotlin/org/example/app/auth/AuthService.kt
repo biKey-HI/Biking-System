@@ -104,17 +104,20 @@ class AuthService(
         val id = user.id ?: error("Persisted user has null id")
         val token = TokenUtil.issueFakeToken(id, user.email)
 
-        // Access role within transaction to ensure it's loaded
+        // Access email, role and plan within transaction to ensure they're loaded
+        val userEmail = user.email
         val userRole = user.role.name
+        val userPricingPlan = user.paymentStrategy
 
         user.notificationToken = if(req.notificationToken == "") {null} else {req.notificationToken}
         userRepository.save(user)
 
         return LoginResponse(
             token = token,
-            email = user.email,
+            email = userEmail,
             userId = id,
-            role = userRole
+            role = userRole,
+            pricingPlan = userPricingPlan
         )
     }
 }

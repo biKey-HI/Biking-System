@@ -186,8 +186,8 @@
     "stateChanges": [
       {
         "forStationId": "33333333-3333-3333-3333-333333333333",
-        "fromState": "Empty",
-        "toState": "Partially Filled",
+        "fromState": "PartiallyFilled",
+        "toState": "PartiallyFilled",
         "atTime": "2025-10-15T09:00:00Z"
       }
     ],
@@ -214,7 +214,12 @@
           "id": "33333333-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "33333333-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -225,7 +230,12 @@
           "id": "33333333-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "33333333-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       }
@@ -255,7 +265,7 @@
     "stateChanges": [
       {
         "forStationId": "44444444-4444-4444-4444-444444444444",
-        "fromState": "Empty",
+        "fromState": "Full",
         "toState": "Full",
         "atTime": "2025-10-20T10:00:00Z"
       }
@@ -268,7 +278,12 @@
           "id": "44444444-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "44444444-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -279,7 +294,12 @@
           "id": "44444444-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "44444444-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -290,7 +310,12 @@
           "id": "44444444-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "44444444-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -301,7 +326,12 @@
           "id": "44444444-aaaa-4444-bbbb-444444444444",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "44444444-aaaa-4444-bbbb-444444444444",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       }
@@ -331,8 +361,8 @@
     "stateChanges": [
       {
         "forStationId": "55555555-5555-5555-5555-555555555555",
-        "fromState": "Empty",
-        "toState": "Partially Filled",
+        "fromState": "PartiallyFilled",
+        "toState": "PartiallyFilled",
         "atTime": "2025-10-18T08:30:00Z"
       }
     ],
@@ -364,7 +394,12 @@
           "id": "55555555-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "55555555-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -375,7 +410,12 @@
           "id": "55555555-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "55555555-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
@@ -405,8 +445,8 @@
     "stateChanges": [
       {
         "forStationId": "66666666-6666-6666-6666-666666666666",
-        "fromState": "Empty",
-        "toState": "Partially Filled",
+        "fromState": "PartiallyFilled",
+        "toState": "PartiallyFilled",
         "atTime": "2025-10-12T07:00:00Z"
       }
     ],
@@ -443,7 +483,12 @@
           "id": "66666666-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "66666666-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -454,7 +499,12 @@
           "id": "66666666-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "66666666-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -465,7 +515,12 @@
           "id": "66666666-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "66666666-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
@@ -495,7 +550,7 @@
     "stateChanges": [
       {
         "forStationId": "77777777-7777-7777-7777-777777777777",
-        "fromState": "Partially Filled",
+        "fromState": "Empty",
         "toState": "Empty",
         "atTime": "2025-11-01T14:00:00Z"
       }
@@ -547,8 +602,8 @@
     "stateChanges": [
       {
         "forStationId": "88888888-8888-8888-8888-888888888888",
-        "fromState": "Empty",
-        "toState": "Partially Filled",
+        "fromState": "PartiallyFilled",
+        "toState": "PartiallyFilled",
         "atTime": "2025-10-25T11:00:00Z"
       }
     ],
@@ -575,7 +630,12 @@
           "id": "88888888-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "88888888-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -586,7 +646,12 @@
           "id": "88888888-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "88888888-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -597,7 +662,12 @@
           "id": "88888888-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "88888888-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -608,7 +678,12 @@
           "id": "88888888-aaaa-4444-bbbb-444444444444",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "88888888-aaaa-4444-bbbb-444444444444",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
@@ -635,7 +710,12 @@
     "numOccupiedDocks": 4,
     "aBikeIsReserved": false,
     "reservationHoldTime": 9,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "99999999-9999-9999-9999-999999999999",
+      "fromState": "PartiallyFilled",
+      "toState": "PartiallyFilled",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "99999999-aaaa-bbbb-cccc-111111111111",
@@ -654,7 +734,12 @@
           "id": "99999999-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "99999999-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -665,7 +750,12 @@
           "id": "99999999-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "99999999-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -676,7 +766,12 @@
           "id": "99999999-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "99999999-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -687,7 +782,12 @@
           "id": "99999999-aaaa-4444-bbbb-444444444444",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "99999999-aaaa-4444-bbbb-444444444444",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
@@ -714,7 +814,12 @@
     "numOccupiedDocks": 5,
     "aBikeIsReserved": false,
     "reservationHoldTime": 7,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "fromState": "Full",
+      "toState": "Full",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "aaaaaaaa-aaaa-bbbb-cccc-111111111111",
@@ -723,7 +828,12 @@
           "id": "aaaaaaaa-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "aaaaaaaa-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -734,7 +844,12 @@
           "id": "aaaaaaaa-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "aaaaaaaa-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -745,7 +860,12 @@
           "id": "aaaaaaaa-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "aaaaaaaa-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -756,7 +876,12 @@
           "id": "aaaaaaaa-aaaa-4444-bbbb-444444444444",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "aaaaaaaa-aaaa-4444-bbbb-444444444444",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -767,7 +892,12 @@
           "id": "aaaaaaaa-aaaa-5555-bbbb-555555555555",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "aaaaaaaa-aaaa-5555-bbbb-555555555555",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
@@ -794,7 +924,12 @@
     "numOccupiedDocks": 4,
     "aBikeIsReserved": false,
     "reservationHoldTime": 15,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "fromState": "PartiallyFilled",
+      "toState": "PartiallyFilled",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "bbbbbbbb-aaaa-bbbb-cccc-111111111111",
@@ -833,7 +968,12 @@
           "id": "bbbbbbbb-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "bbbbbbbb-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+            }],
           "isEBike": false
         }
       },
@@ -844,7 +984,12 @@
           "id": "bbbbbbbb-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "bbbbbbbb-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -855,7 +1000,12 @@
           "id": "bbbbbbbb-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "bbbbbbbb-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -866,7 +1016,12 @@
           "id": "bbbbbbbb-aaaa-4444-bbbb-444444444444",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "bbbbbbbb-aaaa-4444-bbbb-444444444444",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
@@ -893,7 +1048,12 @@
     "numOccupiedDocks": 1,
     "aBikeIsReserved": false,
     "reservationHoldTime": 6,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      "fromState": "PartiallyFilled",
+      "toState": "PartiallyFilled",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "cccccccc-aaaa-bbbb-cccc-111111111111",
@@ -917,7 +1077,12 @@
           "id": "cccccccc-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "cccccccc-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       }
@@ -944,7 +1109,12 @@
     "numOccupiedDocks": 3,
     "aBikeIsReserved": false,
     "reservationHoldTime": 8,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      "fromState": "PartiallyFilled",
+      "toState": "PartiallyFilled",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "dddddddd-aaaa-bbbb-cccc-111111111111",
@@ -963,7 +1133,12 @@
           "id": "dddddddd-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "dddddddd-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -974,7 +1149,12 @@
           "id": "dddddddd-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "dddddddd-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -985,7 +1165,12 @@
           "id": "dddddddd-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "dddddddd-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       }
@@ -1012,7 +1197,12 @@
     "numOccupiedDocks": 3,
     "aBikeIsReserved": false,
     "reservationHoldTime": 10,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+      "fromState": "PartiallyFilled",
+      "toState": "PartiallyFilled",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "eeeeeeee-aaaa-bbbb-cccc-111111111111",
@@ -1041,7 +1231,12 @@
           "id": "eeeeeeee-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "eeeeeeee-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -1052,7 +1247,12 @@
           "id": "eeeeeeee-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "eeeeeeee-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -1063,7 +1263,12 @@
           "id": "eeeeeeee-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "eeeeeeee-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       }
@@ -1090,7 +1295,12 @@
     "numOccupiedDocks": 3,
     "aBikeIsReserved": false,
     "reservationHoldTime": 9,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+      "fromState": "PartiallyFilled",
+      "toState": "PartiallyFilled",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "ffffffff-aaaa-bbbb-cccc-111111111111",
@@ -1114,7 +1324,12 @@
           "id": "ffffffff-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "ffffffff-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       },
@@ -1125,7 +1340,12 @@
           "id": "ffffffff-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "ffffffff-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -1136,7 +1356,12 @@
           "id": "ffffffff-aaaa-3333-bbbb-333333333333",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "ffffffff-aaaa-3333-bbbb-333333333333",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
@@ -1163,7 +1388,12 @@
     "numOccupiedDocks": 0,
     "aBikeIsReserved": false,
     "reservationHoldTime": 7,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "10101010-1010-1010-1010-101010101010",
+      "fromState": "Empty",
+      "toState": "Empty",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "10101010-aaaa-bbbb-cccc-111111111111",
@@ -1213,7 +1443,12 @@
     "numOccupiedDocks": 2,
     "aBikeIsReserved": false,
     "reservationHoldTime": 8,
-    "stateChanges": [],
+    "stateChanges": [{
+      "forStationId": "20202020-2020-2020-2020-202020202020",
+      "fromState": "Empty",
+      "toState": "Empty",
+      "atTime": "2025-06-01T08:00:00Z"
+    }],
     "docks": [
       {
         "id": "20202020-aaaa-bbbb-cccc-111111111111",
@@ -1242,7 +1477,12 @@
           "id": "20202020-aaaa-1111-bbbb-111111111111",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "20202020-aaaa-1111-bbbb-111111111111",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": false
         }
       },
@@ -1253,7 +1493,12 @@
           "id": "20202020-aaaa-2222-bbbb-222222222222",
           "status": "Available",
           "reservationExpiryTime": null,
-          "statusTransitions": [],
+          "statusTransitions": [{
+            "forBikeId": "20202020-aaaa-2222-bbbb-222222222222",
+            "fromState": "Available",
+            "toState": "Available",
+            "atTime": "2025-11-01T07:30:00Z"
+          }],
           "isEBike": true
         }
       }
