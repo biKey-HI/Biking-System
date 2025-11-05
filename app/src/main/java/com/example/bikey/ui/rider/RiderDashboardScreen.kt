@@ -48,6 +48,13 @@ import com.example.bikey.ui.network.CostBreakdownDTO
 import kotlinx.coroutines.delay
 import com.google.maps.android.compose.rememberCameraPositionState
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.HorizontalDivider
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.bikey.ui.pricing.PricingScreen
+import androidx.navigation.compose.composable
+import com.example.bikey.ui.PricingPlan
+import com.example.bikey.ui.UserContext
 
 
 data class ActiveRideInfo(
@@ -162,7 +169,7 @@ fun RiderDashboardScreen(
                         showTripSummary = it
                     }
 
-                    Toast.makeText(context, "Bike returned successfully!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Bike returned successfully! Any payments have been processed.", Toast.LENGTH_SHORT).show()
 
                     // refresh stations
                     val stationsResponse = mapAPI.map()
@@ -306,7 +313,7 @@ fun RiderDashboardScreen(
                         .background(PureWhite)
                         .widthIn(min = 180.dp)
                 ) {
-                    BikeFilter.values().forEach { filter ->
+                    BikeFilter.entries.forEach { filter ->
                         DropdownMenuItem(
                             text = {
                                 Row(
@@ -695,7 +702,7 @@ fun StationDetails(
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
                 shape = RoundedCornerShape(16.dp),
-                // temporarly force-enabled to rule out disabled state
+                // temporarily force-enabled to rule out disabled state
                 // enabled = true //  debugging
                 enabled = station.numOccupiedDocks > 0
             ) {
@@ -851,6 +858,12 @@ fun HamburgerMenu(
                 icon = Icons.Default.Person,
                 text = "Edit Profile",
                 onClick = { /* TODO */ }
+            )
+
+            MenuItemButton(
+                icon = Icons.Filled.CheckCircle,
+                text = "Pricing Plans",
+                onClick = { UserContext.nav?.navigate("selectPricing")}
             )
 
             MenuItemButton(
@@ -1243,11 +1256,10 @@ fun TripSummaryScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 with(summary.summary.cost) {
-                    CostItem("Base fare", baseCents)
-                    CostItem("Time ($minutes mins)", perMinuteCents * minutes)
-                    eBikeSurchargeCents?.let { CostItem("E-Bike surcharge", it) }
-                    overtimeCents?.let { CostItem("Overtime charges", it) }
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    if(UserContext.pricingPlan == PricingPlan.DEFAULT_PAY_NOW) {CostItem("Base fare", baseCents)}
+                    eBikeSurchargeCents?.let { CostItem("Electricity rate ($minutes mins)", it) }
+                    overtimeCents?.let { if(overtimeCents != 0) CostItem("Overtime charges", it) }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
                     CostItem("Total", totalCents, isTotal = true)
                 }
             }

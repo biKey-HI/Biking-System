@@ -1,6 +1,7 @@
 package org.example.app.pricingandpayment
 
 import org.example.app.billing.TripSummaryDTO
+import org.example.app.user.Payment
 //import org.example.app.pricingandpayment.PricingStrategy
 //import org.example.app.pricingandpayment.MonthlySubscriptionStrategy
 //import org.example.app.pricingandpayment.DefaultPayNowStrategy
@@ -23,6 +24,7 @@ class PaymentService(
         val strategy = when (user.paymentStrategy) {
             PaymentStrategyType.DEFAULT_PAY_NOW -> DefaultPayNowStrategy()
             PaymentStrategyType.MONTHLY_SUBSCRIPTION -> MonthlySubscriptionStrategy()
+            PaymentStrategyType.ANNUAL_SUBSCRIPTION -> AnnualSubscriptionStrategy()
         }
         return PaymentContext(strategy)
     }
@@ -31,6 +33,12 @@ class PaymentService(
     fun handlePayment(user: User, summary: TripSummaryDTO): PaymentResult {
         val context = createContext(user)
         return context.executePayment(user, summary, gateway)
+    }
+
+    // Call for pass purchase
+    fun handlePayment(user: User, pricingPlan: PaymentStrategyType): PaymentResult {
+        val context = createContext(user)
+        return context.executePayment(user, pricingPlan == PaymentStrategyType.ANNUAL_SUBSCRIPTION, gateway)
     }
 
     // Used by UI to know if we must show payment form
@@ -43,6 +51,7 @@ class PaymentService(
         val newStrategy = when (type) {
             PaymentStrategyType.DEFAULT_PAY_NOW -> DefaultPayNowStrategy()
             PaymentStrategyType.MONTHLY_SUBSCRIPTION -> MonthlySubscriptionStrategy()
+            PaymentStrategyType.ANNUAL_SUBSCRIPTION -> AnnualSubscriptionStrategy()
         }
         val context = createContext(user)
         context.setStrategy(newStrategy)

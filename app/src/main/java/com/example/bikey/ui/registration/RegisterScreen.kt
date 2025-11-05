@@ -142,7 +142,7 @@ fun RegisterScreen(
                         text = when (state.step) {
                             0 -> "Join BiKey for eco-friendly biking"
                             1 -> "Where do we send billing and correspondence?"
-                            else -> "Optional — add payment now or skip for later"
+                            else -> ""
                         },
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -359,7 +359,7 @@ fun RegisterScreen(
                         }
 
                         2 -> {
-                            // Payment step (optional)
+                            // Payment step
                             OutlinedTextField(
                                 value = state.payHolder,
                                 onValueChange = viewModel::onPayHolderChange,
@@ -414,12 +414,12 @@ fun RegisterScreen(
                                 }
 
                                 Column(horizontalAlignment = Alignment.End) {
-                                    // Skip for now
-                                    TextButton(onClick = { viewModel.skipPayment() }) {
+                                    // Skip for now -- Bring back only for testing purposes, and note the possibility of failures when payments are made
+                                    /* TextButton(onClick = { viewModel.skipPayment() }) {
                                         Text("Skip for now", color = EcoGreen)
                                     }
 
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(6.dp)) */
 
                                     // Create account
                                     Button(
@@ -453,7 +453,7 @@ fun RegisterScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = state.error ?: "",
+                                text = state.error,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(12.dp)
