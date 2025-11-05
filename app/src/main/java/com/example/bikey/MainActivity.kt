@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.bikey.ui.UserContext
 import com.example.bikey.ui.registration.RegisterScreen
 import com.example.bikey.ui.login.LoginScreen
 import com.example.bikey.ui.loading.LoadingScreen
@@ -57,7 +58,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = androidx.compose.material3.MaterialTheme.colorScheme.background
                 ) {
-                    val nav = rememberNavController()
+                    UserContext.nav = rememberNavController()
+                    val nav = UserContext.nav!!
                     NavHost(
                         navController = nav,
                         startDestination = "welcome"
@@ -73,7 +75,13 @@ class MainActivity : ComponentActivity() {
                         composable("pricing") {
                             PricingScreen(
                                 onBack = { nav.popBackStack() },
-                                onSelectPlan = { nav.navigate("register") }
+                                onRegister = { nav.navigate("register") }
+                            )
+                        }
+
+                        composable("selectPricing") {
+                            PricingScreen(
+                                onBack = { nav.popBackStack() }
                             )
                         }
 

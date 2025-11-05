@@ -12,7 +12,7 @@ val none: Duration? = null
 abstract class Bicycle(
     open val id: UUID = UUID.randomUUID(),
     open var status: BikeState = BikeState.AVAILABLE,
-    open var statusTransitions: MutableList<BikeStateTransition> = mutableListOf<BikeStateTransition>(),
+    open var statusTransitions: MutableList<BikeStateTransition> = mutableListOf(),
     open var reservationExpiryTime: Instant? = if(status == BikeState.RESERVED) Instant.now().plus(Duration.ofMinutes(10)) else null
 ) {
     abstract val baseCost: Float
@@ -47,7 +47,7 @@ abstract class Bicycle(
 
 data class Bike(override val id: UUID = UUID.randomUUID(),
     override var status: BikeState = BikeState.AVAILABLE,
-    override var statusTransitions: MutableList<BikeStateTransition> = mutableListOf<BikeStateTransition>(),
+    override var statusTransitions: MutableList<BikeStateTransition> = mutableListOf(),
     override var reservationExpiryTime: Instant? = null,
     override val baseCost: Float = 1.50f,
     override val overtimeRate: Float = 0.20f
@@ -71,9 +71,8 @@ data class Bike(override val id: UUID = UUID.randomUUID(),
 
     override fun getOvertimeCost(): Float? {
         if (status == BikeState.ON_TRIP && isOvertime()!!) {
-            val overtimeHours = getOvertimeDuration()!!.toMinutes().toFloat()/60
-            val fractional = getOvertimeDuration()!!.toMinutes().toFloat()%60/60
-            return overtimeRate*overtimeHours + baseCost*fractional
+            val overtimeMinutes = getOvertimeDuration()!!.toMinutes().toFloat()
+            return overtimeRate*overtimeMinutes
         } else return missing
     }
 }
@@ -106,9 +105,8 @@ data class EBike(override val id: UUID = UUID.randomUUID(),
 
     override fun getOvertimeCost(): Float? {
         if (status == BikeState.ON_TRIP && isOvertime()!!) {
-            val overtimeHours = getOvertimeDuration()!!.toMinutes().toFloat()/60
-            val fractional = getOvertimeDuration()!!.toMinutes().toFloat()%30/30
-            return overtimeRate*overtimeHours + baseCost*fractional
+            val overtimeMinutes = getOvertimeDuration()!!.toMinutes().toFloat()
+            return overtimeRate*overtimeMinutes
         } else return missing
     }
 }
