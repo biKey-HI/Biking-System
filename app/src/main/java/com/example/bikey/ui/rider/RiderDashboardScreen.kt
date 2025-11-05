@@ -38,7 +38,8 @@ import androidx.compose.foundation.layout.systemBarsPadding
 @Composable
 fun RiderDashboardScreen(
     riderEmail: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onReserveBike: () -> Unit
 ) {
     val username = riderEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
     var stations by remember { mutableStateOf<List<DockingStationResponse>>(emptyList()) }
@@ -472,7 +473,7 @@ fun StationDetails(station: DockingStationResponse) {
 
         // Action Button
         Button(
-            onClick = { /* TODO: Reserve bike */ },
+            onClick = { onReserveBike() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),

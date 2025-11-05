@@ -25,6 +25,8 @@ import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
 import com.example.bikey.ui.rider.RiderDashboardScreen
+import com.example.bikey.ui.rider.ReservationScreen
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -150,9 +152,20 @@ class MainActivity : ComponentActivity() {
                                     nav.navigate("welcome") {
                                         popUpTo("welcome") { inclusive = true }
                                     }
+                                },
+                                onReserveBike = {
+                                    nav.navigate("reservation")
                                 }
                             )
                         }
+                        composable("reservation") {
+                            ReservationScreen(
+                                onBack = {
+                                    nav.popBackStack()
+                                }
+                            )
+                        }
+
 
                         composable("operatorDashboard/{email}") { backStackEntry ->
                             val email = backStackEntry.arguments?.getString("email") ?: ""
