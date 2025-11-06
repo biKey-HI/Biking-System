@@ -5,6 +5,7 @@ package com.example.bikey
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -24,8 +25,10 @@ import com.example.bikey.ui.welcome.WelcomeScreen
 import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
+import com.example.bikey.ui.operator.model.DockingStationResponse
 import com.example.bikey.ui.rider.RiderDashboardScreen
 import com.example.bikey.ui.rider.ReservationScreen
+import kotlinx.serialization.json.Json
 
 
 class MainActivity : ComponentActivity() {
@@ -153,18 +156,25 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("welcome") { inclusive = true }
                                     }
                                 },
-                                onReserveBike = {
-                                    nav.navigate("reservation")
+                                onReserveBike = { station ->
+                                    val json = Uri.encode(Json.encodeToString(DockingStationResponse.serializer(), station))
+                                    nav.navigate("reservation/$json")
                                 }
                             )
                         }
-                        composable("reservation") {
+                        composable("reservation/{stationJson}") { backStackEntry ->
+                            val stationJson = backStackEntry.arguments?.getString("stationJson")
+                            val station = stationJson?.let {
+                                Json.decodeFromString(DockingStationResponse.serializer(), it)
+                            }
+
                             ReservationScreen(
-                                onBack = {
-                                    nav.popBackStack()
-                                }
+                                station = station,
+                                onBack = { nav.popBackStack() }
                             )
                         }
+
+
 
 
                         composable("operatorDashboard/{email}") { backStackEntry ->

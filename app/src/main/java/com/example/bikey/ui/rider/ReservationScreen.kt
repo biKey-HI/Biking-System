@@ -11,17 +11,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.bikey.ui.operator.model.DockingStationResponse
+import androidx.compose.material.icons.filled.ArrowBack
+import com.example.bikey.ui.network.mapAPI
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReservationScreen(
+    station: DockingStationResponse?,
     onBack: () -> Unit,
     onConfirmReservation: (String, String) -> Unit = { _, _ -> }
 ) {
     var pickupLocation by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
 
+
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(station?.name ?: "Loading Station...") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
 
     ) { paddingValues ->
         Column(
@@ -39,29 +54,7 @@ fun ReservationScreen(
                 modifier = Modifier.padding(vertical = 16.dp)
             )
 
-            // Pickup location input
-            OutlinedTextField(
-                value = pickupLocation,
-                onValueChange = { pickupLocation = it },
-                label = { Text("Pickup Location") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-            )
 
-            // Destination input
-            OutlinedTextField(
-                value = destination,
-                onValueChange = { destination = it },
-                label = { Text("Destination") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
