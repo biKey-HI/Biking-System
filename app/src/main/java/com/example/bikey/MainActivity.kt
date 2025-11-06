@@ -26,6 +26,7 @@ import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
 import com.example.bikey.ui.rider.RiderDashboardScreen
+import com.example.bikey.ui.rider.RideHistoryScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -180,6 +181,14 @@ class MainActivity : ComponentActivity() {
                         composable("operatorMapDashboard") {
                             OperatorMapDashboardScreen(
                                 onNavigateBack = {
+                                    nav.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable("rideHistory") {
+                            RideHistoryScreen(
+                                onBack = {
                                     nav.popBackStack()
                                 }
                             )

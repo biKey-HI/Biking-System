@@ -68,6 +68,9 @@ interface BikeAPI {
 
     @POST("api/return")
     suspend fun returnBike(@Body body: ReturnBikeRequest): Response<ReturnAndSummaryResponse>
+
+    @retrofit2.http.GET("api/ride-history/{userId}")
+    suspend fun getRideHistory(@retrofit2.http.Path("userId") userId: String): Response<List<TripSummaryDTO>>
 }
 
 private val bikeClient = OkHttpClient.Builder()
