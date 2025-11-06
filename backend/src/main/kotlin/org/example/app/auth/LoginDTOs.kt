@@ -3,6 +3,8 @@ package org.example.app.auth
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
+import org.example.app.pricingandpayment.PricingStrategy
+import org.example.app.user.PaymentStrategyType
 import java.util.UUID
 
 data class LoginRequest(
@@ -15,5 +17,6 @@ data class LoginResponse(
     val token: String,
     val email: String,
     val userId: UUID,
-    val role: String
+    val role: String,
+    val pricingPlan: PaymentStrategyType? = null
 )

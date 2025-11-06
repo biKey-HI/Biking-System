@@ -19,10 +19,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import android.util.Log
+import com.example.bikey.ui.User
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import com.example.bikey.ui.UserContext
+import com.example.bikey.ui.PricingPlan
 
 
 data class RegisterUiState(
@@ -297,6 +299,12 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                         )
                     }
                     UserContext.notificationToken = if(notificationToken == "") {null} else {notificationToken}
+                    UserContext.user = User(
+                        id = res.body()!!.id,
+                        email = res.body()!!.email,
+                        isOperator = false,
+                        pricingPlan = PricingPlan.DEFAULT_PAY_NOW
+                    )
                     _events.emit(RegisterEvent.Success(email))
                 } else if (res.code() == 409) {
                     set { copy(isLoading = false, error = "Account already exists. Please log in instead.") }

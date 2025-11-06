@@ -1,4 +1,4 @@
-package com.example.bikey.ui.bmscoreandstationcontrol.model
+package com.example.bikey.ui.bmscoreandstationcontrol
 
 import android.Manifest
 import android.os.Build

@@ -1,5 +1,6 @@
 package com.example.bikey.ui.login.model
 
+import com.example.bikey.ui.PricingPlan
 import kotlinx.serialization.Serializable
 import java.util.UUID
 import com.example.bikey.ui.UUIDSerializer
@@ -17,5 +18,6 @@ data class LoginResponse(
     val email: String,
     @Serializable(with = UUIDSerializer::class)
     val userId: UUID,
-    val role: String
+    val role: String,
+    val pricingPlan: PricingPlan
 )
