@@ -39,7 +39,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 fun RiderDashboardScreen(
     riderEmail: String,
     onLogout: () -> Unit,
-    onReserveBike: () -> Unit
+    onReserveBike: (DockingStationResponse) -> Unit
 ) {
     val username = riderEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
     var stations by remember { mutableStateOf<List<DockingStationResponse>>(emptyList()) }
@@ -278,8 +278,8 @@ fun RiderDashboardScreen(
             selectedStation = selectedStation,
             isExpanded = panelExpanded,
             onExpandChange = { panelExpanded = it },
-            onReserveBike = {
-                onReserveBike()
+            onReserveBike = { station ->
+                onReserveBike(station)
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -312,7 +312,7 @@ fun SlideUpPanel(
     selectedStation: DockingStationResponse?,
     isExpanded: Boolean,
     onExpandChange: (Boolean) -> Unit,
-    onReserveBike: () -> Unit,
+    onReserveBike: (DockingStationResponse) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val panelHeight by animateFloatAsState(
@@ -371,7 +371,8 @@ fun SlideUpPanel(
                 if (selectedStation != null) {
                     StationDetails(
                         station = selectedStation,
-                        onReserveBike = onReserveBike )
+                        onReserveBike = { station -> onReserveBike(station) }
+                    )
                 } else {
                     Text(
                         text = "Hi, $username!",
@@ -395,7 +396,7 @@ fun SlideUpPanel(
 @Composable
 fun StationDetails(
     station: DockingStationResponse,
-    onReserveBike: () -> Unit) {
+    onReserveBike: (DockingStationResponse) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = station.name,
@@ -483,7 +484,7 @@ fun StationDetails(
 
         // Action Button
         Button(
-            onClick = { onReserveBike() },
+            onClick = { onReserveBike(station) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
