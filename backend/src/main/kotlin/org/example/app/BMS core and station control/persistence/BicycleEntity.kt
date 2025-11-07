@@ -42,7 +42,7 @@ open class BicycleEntity(
         statusTransitions = bike.statusTransitions.map { BikeStateTransitionEntity(it) }.toMutableList(),
         reservationExpiryTime = bike.reservationExpiryTime,
         isEBike = bike is EBike
-    )
+    ) {statusTransitions.forEach {it.bike = this}}
 
     fun toDomain(): Bicycle {
         return if (isEBike) {

@@ -67,7 +67,8 @@ data class ActiveRideInfo(
 @Composable
 fun RiderDashboardScreen(
     riderEmail: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onReserveBike: (DockingStationResponse) -> Unit
 ) {
     var showTripSummary by remember { mutableStateOf<ReturnAndSummaryResponse?>(null) }
 
@@ -232,7 +233,8 @@ fun RiderDashboardScreen(
             )
     } else {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+        .fillMaxSize()
                 .systemBarsPadding()
         ) {
             // Map Layer
@@ -433,7 +435,10 @@ fun RiderDashboardScreen(
                 activeRideStartMs = activeRideStartMs,
                 onTakeBike = { st -> onTakeBike(st) },
                 onReturnBike = { st -> onReturnBike(st) },
-                modifier = Modifier
+                onReserveBike = { station ->
+                onReserveBike(station)
+            },
+            modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
             )
@@ -465,6 +470,7 @@ fun SlideUpPanel(
     selectedStation: DockingStationResponse?,
     isExpanded: Boolean,
     onExpandChange: (Boolean) -> Unit,
+    onReserveBike: (DockingStationResponse) -> Unit,
     hasActiveRide: Boolean,
     activeRideStartMs: Long?,
     onTakeBike: (DockingStationResponse) -> Unit,
@@ -531,7 +537,8 @@ fun SlideUpPanel(
                         hasActiveRide = hasActiveRide,
                         activeRideStartMs = activeRideStartMs,
                         onTakeBike = onTakeBike,
-                        onReturnBike = onReturnBike
+                        onReturnBike = onReturnBike,
+                        onReserveBike = { station -> onReserveBike(station) }
                     )
                 } else {
                     Text(
@@ -555,7 +562,9 @@ fun SlideUpPanel(
 
 @Composable
 fun StationDetails(
+    
     station: DockingStationResponse,
+    onReserveBike: (DockingStationResponse) -> Unit,
     hasActiveRide: Boolean,
     activeRideStartMs: Long?,
     onTakeBike: (DockingStationResponse) -> Unit,
@@ -696,7 +705,7 @@ fun StationDetails(
                 // debug
                 onClick = { Log.d("TakeBike", "BUTTON onClick for station=${station.name}") // debug
                     Toast.makeText(context, "Take Bike pressed", Toast.LENGTH_SHORT).show() // debug
-                    onTakeBike(station) },
+                    UserContext.user?.hasReservation = false; UserContext.user?.reservationStationId = null; onTakeBike(station) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -735,18 +744,18 @@ fun StationDetails(
             }
             // Reserve a bike
             Button(
-                onClick = { /* TODO: Reserve bike */ },
+                onClick = { UserContext.user?.hasReservation = true; UserContext.user?.reservationStationId = station.id; onReserveBike(station) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
                 shape = RoundedCornerShape(16.dp),
-                enabled = station.numOccupiedDocks > 0
+                enabled = station.numOccupiedDocks > 0 && !station.aBikeIsReserved && !(UserContext.hasReservation ?: false)
             ) {
                 Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (station.numOccupiedDocks > 0) "Reserve a Bike" else "No Bikes Available",
+                    text = if (station.numOccupiedDocks > 0 && !station.aBikeIsReserved && !(UserContext.hasReservation ?: false)) "Reserve a Bike" else "No Bikes Available",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = PureWhite
                 )

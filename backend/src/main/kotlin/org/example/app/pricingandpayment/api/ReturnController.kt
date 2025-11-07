@@ -1,6 +1,7 @@
 package org.example.app.pricingandpayment.api
 
 import org.example.app.billing.BillingService
+import org.example.app.billing.PricingService
 import org.example.app.billing.ReturnAndSummaryResponse
 import org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
 import org.example.app.pricingandpayment.PaymentService

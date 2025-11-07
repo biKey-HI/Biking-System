@@ -24,7 +24,7 @@ data class BikeStateTransitionEntity(
 
     @ManyToOne
     @JoinColumn(name = "bike_id", nullable = true)
-    var bike: BicycleEntity? = null,
+    var bike: BicycleEntity?,
 
     @Column(nullable = false)
     @Convert(converter = BikeStateConverter::class)

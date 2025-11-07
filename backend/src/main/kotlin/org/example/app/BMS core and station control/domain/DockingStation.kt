@@ -8,6 +8,8 @@ import org.example.app.user.UserRepository
 import org.example.app.user.UserRole
 import org.example.app.user.Address
 import jakarta.persistence.Embeddable
+import org.example.app.billing.PricingService
+import org.slf4j.LoggerFactory
 
 val ok: Unit? = Unit
 val fail: Unit? = null
@@ -257,9 +259,8 @@ class Empty(override val station: DockingStation): DockingStationState {
             if (bike.status != BikeState.ON_TRIP) return fail
             if (dockId != null && station.docks.firstOrNull { it.id == dockId } == null) return fail
             if (dockId == null && station.docks.firstOrNull { it.status == DockState.EMPTY } == null) return fail
-            var dock: Dock
-            if (dockId != null) dock = station.docks.firstOrNull { it.id == dockId }!!
-            else dock = station.docks.firstOrNull { it.status == DockState.EMPTY }!!
+            val dock: Dock = if (dockId != null) station.docks.firstOrNull { it.id == dockId }!!
+            else station.docks.firstOrNull { it.status == DockState.EMPTY }!!
 
             dock.bike = bike
 
@@ -512,6 +513,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
                 station.numOccupiedDocks++
 
                 bike.status = BikeState.AVAILABLE
+                LoggerFactory.getLogger(PricingService::class.java).info("Returning Bike -- bike.statusTransitions.size: ${bike.statusTransitions.size}")
                 bike.statusTransitions.add(
                     BikeStateTransition(
                         bike.id,
