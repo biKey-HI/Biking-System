@@ -57,7 +57,7 @@ class TripFacadeImpl(
             ?.takeIf { it.isNotBlank() }
             ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
 
-        destStation.status?.returnBike(
+        destStation.returnBike(
             bike = bike,
             dockId = dockUuid,
             userId = trip.riderId,
