@@ -2,6 +2,7 @@ package org.example.app.pricingandpayment.api
 
 import org.example.app.billing.BillingService
 import org.example.app.billing.TripSummaryDTO
+import org.example.app.billing.RideHistoryItemDTO
 import org.example.app.bmscoreandstationcontrol.persistence.TripRepository
 import org.example.app.bmscoreandstationcontrol.persistence.TripStatus
 import org.example.app.pricingandpayment.api.TripFacade
@@ -19,12 +20,14 @@ class RideHistoryController(
     private val tripFacade: TripFacade,
     private val billingService: BillingService,
     private val userRepository: UserRepository,
-    private val bikes: org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
+    private val bikes: org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository,
+    private val paymentRepository: org.example.app.user.PaymentRepository
+    
 ) {
     private val logger = LoggerFactory.getLogger(RideHistoryController::class.java)
 
     @GetMapping("/{userId}")
-    fun getRideHistory(@PathVariable userId: UUID): List<TripSummaryDTO> {
+    fun getRideHistory(@PathVariable userId: UUID): List<RideHistoryItemDTO> {
         logger.info("Fetching ride history for user: $userId")
         
         val user = userRepository.findById(userId).orElseThrow {
@@ -32,16 +35,33 @@ class RideHistoryController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         }
 
+        // Fetch payment details once
+        val savedPayment = paymentRepository.findByUserId(userId)
+        val hasSavedCard = savedPayment != null && savedPayment.token != null
+        val cardHolderName = savedPayment?.cardHolderName
+        val last4 = savedPayment?.cardLast4
+        val provider = savedPayment?.provider
+        val paymentStrategy = user.paymentStrategy.toString() // Get the payment strategy name
+
         // Get all trips for the user, ordered by most recent first
         val trips = tripRepository.findByRiderIdOrderByStartedAtDesc(userId)
         
-        // Filter only completed trips and convert to TripSummaryDTO
+        // Filter only completed trips and convert to RideHistoryItemDTO
         return trips
             .filter { it.status == TripStatus.COMPLETED && it.endedAt != null }
             .map { trip ->
                 try {
                     val tripDomain = tripFacade.getTripDomain(trip.id)
-                    billingService.summarize(tripDomain, bikes, user.paymentStrategy)
+                    val summary = billingService.summarize(tripDomain, bikes, user.paymentStrategy)
+                    // Construct the new DTO
+                    RideHistoryItemDTO(
+                        summary = summary,
+                        paymentStrategy = paymentStrategy,
+                        hasSavedCard = hasSavedCard,
+                        cardHolderName = cardHolderName,
+                        savedCardLast4 = last4,
+                        provider = provider
+                    )
                 } catch (e: Exception) {
                     logger.error("Error processing trip ${trip.id}", e)
                     null

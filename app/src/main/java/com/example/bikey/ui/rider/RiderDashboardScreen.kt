@@ -62,6 +62,9 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.example.bikey.ui.network.RideHistoryItemDTO 
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 
 data class ActiveRideInfo(
@@ -1345,7 +1348,7 @@ fun RideHistoryScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var rides by remember { mutableStateOf<List<TripSummaryDTO>>(emptyList()) }
+    var rides by remember { mutableStateOf<List<RideHistoryItemDTO>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -1496,17 +1499,21 @@ fun RideHistoryScreen(
 }
 
 @Composable
-fun RideHistoryItem(ride: TripSummaryDTO) {
+fun RideHistoryItem(ride: RideHistoryItemDTO) {
+    // State to manage expansion
+    var isExpanded by remember { mutableStateOf(false) }
+
     val dateFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT)
         .withZone(ZoneId.systemDefault())
     
     val startTime = try {
-        Instant.parse(ride.startTime)
+        Instant.parse(ride.summary.startTime)
     } catch (e: Exception) {
         null
     }
 
     Card(
+        onClick = { isExpanded = !isExpanded },
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = PureWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -1534,13 +1541,13 @@ fun RideHistoryItem(ride: TripSummaryDTO) {
                         )
                     }
                     Text(
-                        text = if (ride.isEBike) "E-Bike" else "Classic Bike",
+                        text = if (ride.summary.isEBike) "E-Bike" else "Classic Bike",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
                 }
                 Text(
-                    text = "$${ride.cost.totalCents / 100.0}",
+                    text = "$${ride.summary.cost.totalCents / 100.0}",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = EcoGreen
@@ -1568,7 +1575,7 @@ fun RideHistoryItem(ride: TripSummaryDTO) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = ride.startStationName,
+                        text = ride.summary.startStationName,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
@@ -1583,7 +1590,7 @@ fun RideHistoryItem(ride: TripSummaryDTO) {
                             .padding(vertical = 4.dp)
                     )
                     Text(
-                        text = ride.endStationName,
+                        text = ride.summary.endStationName,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
@@ -1600,16 +1607,100 @@ fun RideHistoryItem(ride: TripSummaryDTO) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "⏱ ${ride.durationMinutes} min",
+                    text = "⏱ ${ride.summary.durationMinutes} min",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
-                if (ride.cost.overtimeCents != null && ride.cost.overtimeCents > 0) {
+                if (ride.summary.cost.overtimeCents != null && ride.summary.cost.overtimeCents > 0) {
                     Text(
-                        text = "Overtime: $${ride.cost.overtimeCents / 100.0}",
+                        text = "Overtime: $${ride.summary.cost.overtimeCents / 100.0}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFFF6B6B)
                     )
+                }
+            }
+            // Expandable Bill Section Toggle
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Trip ID: ${ride.summary.tripId}",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.Gray
+                    )
+                )
+
+                Text(
+                    text = "Show Bill ${if (isExpanded) "▲" else "▼"}",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = EcoGreen,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    // Click handler is on the main Card
+                )
+            }
+
+            // Detailed Bill Content (conditionally shown)
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(thickness = 1.dp, color = LightGray)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // --- COST BREAKDOWN ---
+                Text(
+                    text = "Cost Breakdown",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = DarkGreen
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                with(ride.summary.cost) {
+                    val isPayAsYouGo = ride.paymentStrategy == PricingPlan.DEFAULT_PAY_NOW.displayName
+
+                    if (isPayAsYouGo && baseCents > 0) {
+                        CostItem("Base fare (Unlock fee)", baseCents)
+                    }
+
+                    // We rely on the cents being non-zero to show the line item
+                    eBikeSurchargeCents?.let { if (it > 0) CostItem("E-Bike Surcharge", it) }
+                    overtimeCents?.let { if (it > 0) CostItem("Overtime charges", it) }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
+                    CostItem("Total Charged", totalCents, isTotal = true)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // --- PAYMENT INFORMATION ---
+                Text(
+                    text = "Payment Information",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = DarkGreen
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val isSubscription = ride.paymentStrategy != PricingPlan.DEFAULT_PAY_NOW.displayName
+                val paymentStatus = when {
+                    isSubscription -> "Covered by ${ride.paymentStrategy}"
+                    ride.summary.cost.totalCents == 0 -> "No Charge"
+                    ride.hasSavedCard -> "Paid via Card on File"
+                    else -> "Payment processed" // Fallback
+                }
+
+                TripDetailItem("Payment Status", paymentStatus)
+
+                // Show card details if available, regardless of payment strategy (for user info)
+                if (ride.hasSavedCard && ride.savedCardLast4 != null && ride.cardHolderName != null) {
+                    TripDetailItem("Cardholder Name", ride.cardHolderName)
+                    TripDetailItem("Card Used", "${ride.provider ?: "Card"} ending in •••• ${ride.savedCardLast4}")
+                } else if (isSubscription) {
+                    TripDetailItem("Subscription Plan", ride.paymentStrategy)
+                } else {
+                    TripDetailItem("Card Details", "None on file for this account.")
                 }
             }
         }

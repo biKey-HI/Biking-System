@@ -62,6 +62,17 @@ data class ReturnAndSummaryResponse(
     val provider: String? = null
 )
 
+// for ride history billing info
+@Serializable
+data class RideHistoryItemDTO(
+    val summary: TripSummaryDTO,
+    val paymentStrategy: String,
+    val hasSavedCard: Boolean,
+    val cardHolderName: String? = null,
+    val savedCardLast4: String? = null,
+    val provider: String? = null
+)
+
 interface BikeAPI {
     @POST("api/take-bike")
     suspend fun takeBike(@Body body: TakeBikeRequest): Response<TakeBikeResponse>
@@ -70,7 +81,7 @@ interface BikeAPI {
     suspend fun returnBike(@Body body: ReturnBikeRequest): Response<ReturnAndSummaryResponse>
 
     @retrofit2.http.GET("api/ride-history/{userId}")
-    suspend fun getRideHistory(@retrofit2.http.Path("userId") userId: String): Response<List<TripSummaryDTO>>
+    suspend fun getRideHistory(@retrofit2.http.Path("userId") userId: String): Response<List<RideHistoryItemDTO>>
 }
 
 private val bikeClient = OkHttpClient.Builder()
