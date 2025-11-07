@@ -178,6 +178,7 @@ class MainActivity : ComponentActivity() {
 
                             ReservationScreen(
                                 station = station,
+                                riderId = UserContext.id.toString(),
                                 onBack = { nav.popBackStack() }
                             )
                         }
