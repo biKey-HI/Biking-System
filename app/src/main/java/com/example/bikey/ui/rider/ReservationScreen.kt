@@ -83,8 +83,9 @@ fun ReservationScreen(
                     val expires = res?.reservedUntilEpochMs?.let {
                         Instant.ofEpochMilli(it)
                     }
-                    message =
-                        "Reserved bike ${bike.id}! Expires at ${expires ?: "soon"}"
+
+                    val bikeType = if (bike.isEBike) "E-Bike" else "Regular Bike"
+                    message = "Reserved $bikeType at ${station.name}! Expires at ${expires ?: "soon"}"
 
                     // Remove reserved bike from displayed list
                     availableBikes = availableBikes.filterNot { it.id == bike.id }
