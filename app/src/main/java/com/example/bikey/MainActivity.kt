@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.bikey.ui.UserContext
 import com.example.bikey.ui.registration.RegisterScreen
 import com.example.bikey.ui.login.LoginScreen
 import com.example.bikey.ui.loading.LoadingScreen
@@ -25,6 +26,7 @@ import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
 import com.example.bikey.ui.rider.RiderDashboardScreen
+import com.example.bikey.ui.rider.RideHistoryScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +54,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = androidx.compose.material3.MaterialTheme.colorScheme.background
                 ) {
-                    val nav = rememberNavController()
+                    UserContext.nav = rememberNavController()
+                    val nav = UserContext.nav!!
                     NavHost(
                         navController = nav,
                         startDestination = "welcome"
@@ -68,7 +71,13 @@ class MainActivity : ComponentActivity() {
                         composable("pricing") {
                             PricingScreen(
                                 onBack = { nav.popBackStack() },
-                                onSelectPlan = { nav.navigate("register") }
+                                onRegister = { nav.navigate("register") }
+                            )
+                        }
+
+                        composable("selectPricing") {
+                            PricingScreen(
+                                onBack = { nav.popBackStack() }
                             )
                         }
 
@@ -172,6 +181,14 @@ class MainActivity : ComponentActivity() {
                         composable("operatorMapDashboard") {
                             OperatorMapDashboardScreen(
                                 onNavigateBack = {
+                                    nav.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable("rideHistory") {
+                            RideHistoryScreen(
+                                onBack = {
                                     nav.popBackStack()
                                 }
                             )

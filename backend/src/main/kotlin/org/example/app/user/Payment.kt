@@ -17,7 +17,7 @@ data class Payment(
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
-    val user: User,
+    val user: User? = null,
 
     @Column(nullable = false)
     val cardHolderName: String,

@@ -1,0 +1,67 @@
+package com.example.bikey.ui.operator.model
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class DockingStationResponse(
+    val id: String,
+    val name: String,
+    val address: AddressResponse,
+    val location: LatLngResponse,
+    val status: String,
+    val capacity: Int,
+    val numFreeDocks: Int,
+    val numOccupiedDocks: Int,
+    val aBikeIsReserved: Boolean,
+    val reservationHoldTime: Long,
+    val docks: List<DockResponse>,
+    val stateChanges: List<DockingStationStateTransitionResponse> = emptyList(),
+    val reservationUserId: String? = null
+)
+
+@Serializable
+data class AddressResponse(
+    val line1: String,
+    val line2: String?,
+    val city: String,
+    val province: String,
+    val postalCode: String
+)
+
+@Serializable
+data class LatLngResponse(
+    val latitude: Double,
+    val longitude: Double
+)
+
+@Serializable
+data class DockResponse(
+    val id: String,
+    val bike: BicycleResponse?,
+    val status: String
+)
+
+@Serializable
+data class BicycleResponse(
+    val id: String,
+    val bike: BicycleResponse? = null,
+    val reservationExpiryTime: String? = null,
+    val statusTransitions: List<BikeStateTransitionResponse> = emptyList(),
+    val isEBike: Boolean = false
+)
+
+@Serializable
+data class BikeStateTransitionResponse(
+    val forBikeId: String,
+    val fromState: String,
+    val toState: String,
+    val atTime: String
+)
+
+@Serializable
+data class DockingStationStateTransitionResponse(
+    val forStationId: String,
+    val fromState: String,
+    val toState: String,
+    val atTime: String
+)
