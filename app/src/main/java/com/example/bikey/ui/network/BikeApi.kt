@@ -62,12 +62,28 @@ data class ReturnAndSummaryResponse(
     val provider: String? = null
 )
 
+@Serializable
+data class ReserveBikeRequest(
+    val stationId: String,
+    val bikeId: String,
+    val userId: String
+)
+
+@Serializable
+data class ReserveBikeResponse(
+    val stationId: String,
+    val bikeId: String,
+    val reservedUntilEpochMs: Long
+)
 interface BikeAPI {
     @POST("api/take-bike")
     suspend fun takeBike(@Body body: TakeBikeRequest): Response<TakeBikeResponse>
 
     @POST("api/return")
     suspend fun returnBike(@Body body: ReturnBikeRequest): Response<ReturnAndSummaryResponse>
+
+    @POST("api/reserve-bike")
+    suspend fun reserveBike(@Body body: ReserveBikeRequest): Response<ReserveBikeResponse>
 }
 
 private val bikeClient = OkHttpClient.Builder()

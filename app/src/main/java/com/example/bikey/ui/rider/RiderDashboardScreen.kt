@@ -537,7 +537,8 @@ fun SlideUpPanel(
                         hasActiveRide = hasActiveRide,
                         activeRideStartMs = activeRideStartMs,
                         onTakeBike = onTakeBike,
-                        onReturnBike = onReturnBike
+                        onReturnBike = onReturnBike,
+                        onReserveBike = { station -> onReserveBike(station) }
                     )
                 } else {
                     Text(
