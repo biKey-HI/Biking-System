@@ -853,11 +853,26 @@ fun HamburgerMenu(
                             color = PureWhite
                         )
                     )
-                    Text(
-                        text = "Rider Account",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = PureWhite.copy(alpha = 0.8f)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Rider Account",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PureWhite.copy(alpha = 0.8f)
+                        )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PureWhite.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = UserContext.pricingPlan?.displayName ?: "No Plan",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PureWhite.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             }
 
@@ -1546,8 +1561,15 @@ fun RideHistoryItem(ride: RideHistoryItemDTO) {
                         color = Color.Gray
                     )
                 }
+                // Show plan name if subscription and cost is $0, otherwise show cost
+                val isSubscription = ride.paymentStrategy != PricingPlan.DEFAULT_PAY_NOW.displayName
+                val costText = if (isSubscription && ride.summary.cost.totalCents == 0) {
+                    ride.paymentStrategy
+                } else {
+                    "$${ride.summary.cost.totalCents / 100.0}"
+                }
                 Text(
-                    text = "$${ride.summary.cost.totalCents / 100.0}",
+                    text = costText,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = EcoGreen
@@ -1660,6 +1682,7 @@ fun RideHistoryItem(ride: RideHistoryItemDTO) {
 
                 with(ride.summary.cost) {
                     val isPayAsYouGo = ride.paymentStrategy == PricingPlan.DEFAULT_PAY_NOW.displayName
+                    val isSubscription = !isPayAsYouGo
 
                     if (isPayAsYouGo && baseCents > 0) {
                         CostItem("Base fare (Unlock fee)", baseCents)
@@ -1670,7 +1693,12 @@ fun RideHistoryItem(ride: RideHistoryItemDTO) {
                     overtimeCents?.let { if (it > 0) CostItem("Overtime charges", it) }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
-                    CostItem("Total Charged", totalCents, isTotal = true)
+                    // Show plan name if subscription and cost is $0, otherwise show cost
+                    if (isSubscription && totalCents == 0) {
+                        TripDetailItem("Total Charged", ride.paymentStrategy)
+                    } else {
+                        CostItem("Total Charged", totalCents, isTotal = true)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1683,25 +1711,32 @@ fun RideHistoryItem(ride: RideHistoryItemDTO) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Always show the payment plan/strategy
                 val isSubscription = ride.paymentStrategy != PricingPlan.DEFAULT_PAY_NOW.displayName
-                val paymentStatus = when {
-                    isSubscription -> "Covered by ${ride.paymentStrategy}"
-                    ride.summary.cost.totalCents == 0 -> "No Charge"
-                    ride.hasSavedCard -> "Paid via Card on File"
-                    else -> "Payment processed" // Fallback
-                }
+                TripDetailItem(
+                    label = if (isSubscription) "Subscription Plan" else "Payment Plan",
+                    value = ride.paymentStrategy
+                )
 
-                TripDetailItem("Payment Status", paymentStatus)
-
-                // Show card details if available, regardless of payment strategy (for user info)
-                if (ride.hasSavedCard && ride.savedCardLast4 != null && ride.cardHolderName != null) {
+                // Show cardholder name if available
+                if (ride.cardHolderName != null) {
                     TripDetailItem("Cardholder Name", ride.cardHolderName)
-                    TripDetailItem("Card Used", "${ride.provider ?: "Card"} ending in •••• ${ride.savedCardLast4}")
-                } else if (isSubscription) {
-                    TripDetailItem("Subscription Plan", ride.paymentStrategy)
-                } else {
-                    TripDetailItem("Card Details", "None on file for this account.")
                 }
+
+                // Show card last 4 digits if available
+                if (ride.savedCardLast4 != null) {
+                    val cardProvider = ride.provider ?: "Card"
+                    TripDetailItem("Card Used", "$cardProvider ending in •••• ${ride.savedCardLast4}")
+                }
+
+                // Payment status summary
+                val paymentStatus = when {
+                    isSubscription -> "Covered by subscription"
+                    ride.summary.cost.totalCents == 0 -> "No charge"
+                    ride.hasSavedCard -> "Paid via card on file"
+                    else -> "Payment processed"
+                }
+                TripDetailItem("Payment Status", paymentStatus)
             }
         }
     }
