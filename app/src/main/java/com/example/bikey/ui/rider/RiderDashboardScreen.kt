@@ -705,7 +705,7 @@ fun StationDetails(
                 // debug
                 onClick = { Log.d("TakeBike", "BUTTON onClick for station=${station.name}") // debug
                     Toast.makeText(context, "Take Bike pressed", Toast.LENGTH_SHORT).show() // debug
-                    onTakeBike(station) },
+                    UserContext.user?.hasReservation = false; UserContext.user?.reservationStationId = null; onTakeBike(station) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -744,18 +744,18 @@ fun StationDetails(
             }
             // Reserve a bike
             Button(
-                onClick = { onReserveBike(station) },
+                onClick = { UserContext.user?.hasReservation = true; UserContext.user?.reservationStationId = station.id; onReserveBike(station) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
                 shape = RoundedCornerShape(16.dp),
-                enabled = station.numOccupiedDocks > 0
+                enabled = station.numOccupiedDocks > 0 && !station.aBikeIsReserved && !(UserContext.hasReservation ?: false)
             ) {
                 Icon(Icons.Default.Lock, contentDescription = null, tint = PureWhite)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (station.numOccupiedDocks > 0) "Reserve a Bike" else "No Bikes Available",
+                    text = if (station.numOccupiedDocks > 0 && !station.aBikeIsReserved && !(UserContext.hasReservation ?: false)) "Reserve a Bike" else "No Bikes Available",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = PureWhite
                 )

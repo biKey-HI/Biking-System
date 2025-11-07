@@ -38,8 +38,12 @@ class TakeBikeController(
         // converting jpa
         val station = stationEntity.toDomain()
 
-        // pick dock that holds an available bike
-        val dockWithBike = station.docks.firstOrNull { it.bike != null && it.bike!!.status == BikeState.AVAILABLE }
+        val reservation = station.aBikeIsReserved && station.reservationUserId == user.id
+
+        val dockWithBike = (if(reservation)
+            station.docks.firstOrNull { it.bike != null && it.bike!!.status == BikeState.RESERVED }
+        else
+            station.docks.firstOrNull { it.bike != null && it.bike!!.status == BikeState.AVAILABLE })
             ?: throw ResponseStatusException(HttpStatus.CONFLICT, "No available bikes at this station")
 
         val bike = dockWithBike.bike!!
@@ -47,7 +51,7 @@ class TakeBikeController(
         stationSvc.takeBike(
             dockingStation = station,
             bike = bike,
-            fromReservation = false,
+            fromReservation = reservation,
             userId = user.id!! // for uuid
         ) ?: throw ResponseStatusException(HttpStatus.CONFLICT, "Cannot take bike in current state") // (takeBike) :contentReference[oaicite:4]{index=4}
 

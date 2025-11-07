@@ -17,7 +17,8 @@ class DefaultPayNowStrategy : PricingStrategy {
 
         val result = gateway.charge(user.id!!, token, amount, idempotencyKey = "trip:${summary.tripId}")
         return if (result.success)
-            PaymentResult(true, "Charged \$${amount / 100.0} to your card •••• ${payment.cardLast4}.")
+            PaymentResult(true, "Charged $${amount / 100.0} to your card •••• ${payment.cardLast4}."
+            )
         else
             PaymentResult(false, "Payment failed: ${result.failureReason}")
     }

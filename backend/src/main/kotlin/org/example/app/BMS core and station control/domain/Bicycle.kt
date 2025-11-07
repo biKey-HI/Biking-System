@@ -1,6 +1,8 @@
 package org.example.app.bmscoreandstationcontrol.domain
 
+import org.example.app.billing.PricingService
 import org.example.app.user.PaymentStrategyType
+import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -36,6 +38,7 @@ abstract class Bicycle(
     abstract fun getOvertimeDuration(): Duration?
 
     fun calculateCost(pricingPlan: PaymentStrategyType): Float? { // Template method
+        LoggerFactory.getLogger(PricingService::class.java).info("Bike info -- status: ${status.toString()}. statusTransitions.size: ${statusTransitions.size}. statusTransitions.last(): ${statusTransitions.last().toString()}. statusTransitions[statusTransitions.size - 2].toState: ${if(statusTransitions.size > 1) statusTransitions[statusTransitions.size - 2].toState.toString() else "None"}.")
         if (!statusTransitions.isEmpty() && status == BikeState.ON_TRIP || statusTransitions.size > 1 && statusTransitions[statusTransitions.size - 2].toState == BikeState.ON_TRIP) {
             var cost = getRegularCost(pricingPlan)!!
 

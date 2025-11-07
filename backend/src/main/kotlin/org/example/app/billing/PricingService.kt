@@ -3,6 +3,7 @@ package org.example.app.billing
 import org.example.app.bmscoreandstationcontrol.domain.Bicycle
 import org.example.app.bmscoreandstationcontrol.domain.EBike
 import org.example.app.user.PaymentStrategyType
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
