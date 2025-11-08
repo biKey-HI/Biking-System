@@ -9,6 +9,8 @@ import org.example.app.user.UserRole
 import org.example.app.user.Address
 import jakarta.persistence.Embeddable
 import org.example.app.billing.PricingService
+import org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
+import org.example.app.bmscoreandstationcontrol.persistence.BikeStateTransitionEntity
 import org.slf4j.LoggerFactory
 
 val ok: Unit? = Unit
@@ -177,20 +179,92 @@ data class DockingStation(val id: UUID = UUID.randomUUID(),
     }
 
     // companion object {
-        fun moveBikeFromThisStation(userId: UUID, bike: Bicycle, toStation: DockingStation, toDockId: UUID? = null, userRepository: UserRepository): Boolean? { // Only called by operators, not riders
-            if((userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
-                val (first, second) = if (this.id < toStation.id) this to toStation else toStation to this // Little trick to prevent deadlocks
-                synchronized(first.lock) {
-                    synchronized(second.lock) { // 3-level return indicators:
-                        if (this.takeBike(bike) == fail) return neither // return null if fails immediately -- bike still in station
-                        return toStation.returnBike(
-                            bike,
-                            toDockId
-                        ) != fail // return false if fails later -- bike out of both stations
-                    } // return true if does not fail -- bike was successfully placed into station
+    fun moveBikeFromThisStation(userId: UUID, bike: Bicycle, toStation: DockingStation, toDockId: UUID? = null, userRepository: UserRepository): Boolean? { // Only called by operators, not riders
+        return if((userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
+            val (first, second) = if (this.id < toStation.id) this to toStation else toStation to this // Little trick to prevent deadlocks
+            synchronized(first.lock) {
+                synchronized(second.lock) { // 3-level return indicators:
+                    if (this.takeBike(bike) == fail) neither // return null if fails immediately -- bike still in station
+                    toStation.returnBike(
+                        bike,
+                        toDockId
+                    ) != fail // return false if fails later -- bike out of both stations
+                } // return true if does not fail -- bike was successfully placed into station
+            }
+        } else {neither}
+    }
+
+    fun toggleOutOfService(userId: UUID, userRepository: UserRepository): Unit? {
+        if((userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
+            synchronized(this.lock) {
+                return (if(this.status is OutOfService) changeToCorrectStationStatus() else fail)
+                    ?: this.changeStationStatus(OutOfService(this))
+            }
+        } else return fail
+    }
+
+    fun toggleDockOutOfService(userId: UUID, dockId: UUID, userRepository: UserRepository): Unit? {
+        if((userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
+            synchronized(this.lock) {
+                val dock = this.docks.firstOrNull {it.id == dockId}
+                return dock?.let {
+                    if(dock.status == DockState.OUT_OF_SERVICE) {
+                        dock.bike?.let {
+                            dock.status = DockState.OCCUPIED
+                        } ?: {dock.status = DockState.EMPTY}
+                        if(this.status !is OutOfService) changeToCorrectStationStatus()
+                    } else {
+                        dock.status = DockState.OUT_OF_SERVICE
+                        if(this.docks.count {it.status == DockState.OUT_OF_SERVICE} >= this.docks.count())
+                            this.changeStationStatus(OutOfService(this))
+                    }
+                    ok
+                } ?: fail
+            }
+        } else return fail
+    }
+
+    fun toggleBikeMaintenance(userId: UUID, bikeId: UUID, userRepository: UserRepository, bikeRepository: BicycleRepository? = null): Unit? {
+        if((userRepository.findById(userId).orElse(null)?.role ?: UserRole.RIDER) == UserRole.OPERATOR) {
+            synchronized(this.lock) {
+                val dock = this.docks.firstOrNull {it.bike?.id == bikeId}
+                return if(dock != null) {
+                    dock.bike?.statusTransitions?.add(BikeStateTransition(dock.bike?.id ?: UUID.randomUUID(), dock.bike?.status ?: BikeState.AVAILABLE, BikeState.MAINTENANCE, Instant.now()))
+                    dock.bike?.status = BikeState.MAINTENANCE
+                    dock.bike = null
+                    dock.status = DockState.EMPTY
+                    if(this.status !is OutOfService) changeToCorrectStationStatus()
+                    ok
+                } else {
+                    val bike = bikeRepository?.findById(bikeId)?.orElse(null)
+                    bike?.let {
+                        if(bike.status != BikeState.AVAILABLE) {
+                            bike.statusTransitions.add(
+                                BikeStateTransitionEntity(
+                                    bike.id,
+                                    bike,
+                                    bike.status,
+                                    BikeState.MAINTENANCE,
+                                    Instant.now()
+                                )
+                            )
+                            bike.status = BikeState.MAINTENANCE
+                            bikeRepository.save(bike)
+                            ok
+                        } else fail
+                    } ?: fail
                 }
-            } else {return neither}
-        }
+            }
+        } else return fail
+    }
+
+    fun changeToCorrectStationStatus(): Unit? {
+        return if(this.changeStationStatus(Empty(this)) == ok ||
+            this.changeStationStatus(PartiallyFilled(this)) == ok ||
+            this.changeStationStatus(Full(this)) == ok)
+            ok
+        else fail
+    }
     // }
 }
 
@@ -234,7 +308,7 @@ class Empty(override val station: DockingStation): DockingStationState {
     }
     override fun changeStationStatus(status: DockingStationState): Unit? {
         synchronized(station.lock) {
-            if (station.docks.filter { it.status == DockState.OCCUPIED }.count() < 1) {
+            if (station.docks.filter { it.status == DockState.OCCUPIED }.count() < 1 && status !is OutOfService) {
                 return fail
             }
             station.status = status
@@ -302,9 +376,9 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
 
     override fun changeStationStatus(status: DockingStationState): Unit? {
         synchronized(station.lock) {
-            if (station.docks.filter { it.status == DockState.OCCUPIED }
-                    .count() > 0 && station.docks.filter { it.status == DockState.EMPTY }
-                    .count() > 0) {
+            if (station.docks.count { it.status == DockState.OCCUPIED } > 0
+                && station.docks.count { it.status == DockState.EMPTY } > 0
+                && status !is OutOfService) {
                 return fail
             }
             station.stateChanges!!.add(
@@ -428,7 +502,7 @@ class PartiallyFilled(override val station: DockingStation): DockingStationState
 
                 d.status = DockState.EMPTY
             } else {
-                if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE }
+                if (station.docks.filter { it.status == DockState.OCCUPIED && it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE }
                         .count() < 1) return fail
 
                 val d = station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE }.first()
@@ -549,7 +623,7 @@ class Full(override val station: DockingStation): DockingStationState {
 
     override fun changeStationStatus(status: DockingStationState): Unit? {
         synchronized(station.lock) {
-            if (station.docks.filter { it.status == DockState.EMPTY }.count() > 0) {
+            if (station.docks.filter { it.status == DockState.EMPTY }.count() > 0 && status !is OutOfService) {
                 return fail
             }
             station.stateChanges!!.add(
@@ -672,7 +746,7 @@ class Full(override val station: DockingStation): DockingStationState {
 
                 d.status = DockState.EMPTY
             } else {
-                if (station.docks.filter { it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE }
+                if (station.docks.filter { it.status == DockState.OCCUPIED && it.bike?.id == bike.id && it.bike?.status == BikeState.AVAILABLE }
                         .count() < 1) return fail
 
                 val d = station.docks.filter { it.bike?.id == bike.id }.first()
@@ -756,8 +830,7 @@ class OutOfService(override val station: DockingStation): DockingStationState {
     }
     override fun changeStationStatus(status: DockingStationState): Unit? {
         synchronized(station.lock) {
-            if (station.docks.filter { it.status == DockState.OUT_OF_SERVICE }
-                    .count() >= station.docks.count() || station.stateChanges == null) {
+            if (station.docks.count { it.status == DockState.OUT_OF_SERVICE } >= station.docks.count() || station.stateChanges == null) {
                 return fail
             }
             station.stateChanges!!.add(
