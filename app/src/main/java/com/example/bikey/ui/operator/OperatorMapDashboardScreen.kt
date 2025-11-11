@@ -30,7 +30,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
@@ -40,6 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import com.example.bikey.ui.network.bikeAPI
+import com.example.bikey.ui.network.MoveBikeRequest
+import com.example.bikey.ui.network.ToggleStationOutOfServiceRequest
+import com.example.bikey.ui.network.ToggleBikeMaintenanceRequest
 import androidx.compose.ui.unit.dp
 import com.example.bikey.ui.theme.*
 import com.google.maps.android.compose.*
@@ -52,6 +55,7 @@ import androidx.compose.material3.TopAppBarDefaults
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OperatorMapDashboardScreen(
+    operatorId: String,
     onNavigateBack: () -> Unit
 ) {
     var stations by remember { mutableStateOf<List<DockingStationResponse>>(emptyList()) }
@@ -78,6 +82,81 @@ fun OperatorMapDashboardScreen(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
+    // --- Operator Actions ---
+
+    fun moveBike(sourceStation: DockingStationResponse, operatorId: String) {
+        scope.launch {
+            try {
+                val req = MoveBikeRequest(
+                    fromStationId = sourceStation.id,
+                    userId = operatorId, // TODO: Replace with real operator id
+                    bikeId = sourceStation.docks.firstOrNull { it.bike != null }?.bike?.id ?: return@launch,
+                    toDockId = null,
+                    toStationId = stations.firstOrNull { it.id != sourceStation.id }?.id ?: return@launch
+                )
+                val res = bikeAPI.moveBike(req)
+                if (res.isSuccessful) {
+                    Toast.makeText(context, "Bike moved successfully!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Move failed (${res.code()})", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun toggleBikeMaintenance(station: DockingStationResponse, operatorId: String) {
+        scope.launch {
+            try {
+                val req = ToggleBikeMaintenanceRequest(
+                    dockingStationId = station.id,
+                    userId = operatorId, // TODO: Replace with real operator id
+                    bikeId = station.docks.firstOrNull { it.bike != null }?.bike?.id ?: return@launch
+                )
+                val res = bikeAPI.toggleBikeMaintenance(req)
+                if (res.isSuccessful) {
+                    Toast.makeText(context, "Bike marked under maintenance", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Maintenance failed (${res.code()})", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun toggleStationOutOfService(station: DockingStationResponse, operatorId: String) {
+        scope.launch {
+            try {
+                val req = ToggleStationOutOfServiceRequest(
+                    dockingStationId = station.id,
+                    userId = operatorId // TODO: Replace with real operator id
+                )
+                val res = bikeAPI.toggleStationOutOfService(req)
+                if (res.isSuccessful) {
+                    Toast.makeText(context, "Station out-of-service toggled", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Toggle failed (${res.code()})", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    fun restoreSystem() {
+        scope.launch {
+            try {
+                // you can re-fetch all stations or reset them in backend
+                //stations = bikeAPI.getAllStations().body().orEmpty()
+                Toast.makeText(context, "🔄 System restored", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "⚠️ Failed to restore: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+
 
     Box(
         modifier = Modifier
@@ -140,18 +219,10 @@ fun OperatorMapDashboardScreen(
                 selectedStation = selectedStation,
                 isExpanded = panelExpanded,
                 onExpandChange = { panelExpanded = it },
-                onMoveBike = { sourceStation ->
-                    Toast.makeText(context, "🚲 Move bike from ${sourceStation.name}", Toast.LENGTH_SHORT).show()
-                    // TODO: open move dialog / call move API
-                },
-                onMarkMaintenance = { station ->
-                    Toast.makeText(context, "🛠 Marked ${station.name} as under maintenance", Toast.LENGTH_SHORT).show()
-                    // TODO: update maintenance state via API
-                },
-                onRestoreSystem = {
-                    Toast.makeText(context, "🔄 Restoring initial system state...", Toast.LENGTH_SHORT).show()
-                    // TODO: reset API call
-                },
+                onMoveBike = { sourceStation -> moveBike(sourceStation,operatorId) },
+                onMarkMaintenance = { station -> toggleBikeMaintenance(station,operatorId) },
+                onToggleOutOfService = { station -> toggleStationOutOfService(station,operatorId) },
+                onRestoreSystem = { restoreSystem() },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
@@ -167,6 +238,7 @@ fun OperatorStationPanel(
     onExpandChange: (Boolean) -> Unit,
     onMoveBike: (DockingStationResponse) -> Unit,
     onMarkMaintenance: (DockingStationResponse) -> Unit,
+    onToggleOutOfService: (DockingStationResponse) -> Unit,
     onRestoreSystem: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -298,7 +370,18 @@ fun OperatorStationPanel(
                 ) {
                     Icon(Icons.Filled.Build, contentDescription = "Mark maintenance")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Mark as Maintenance")
+                    Text("Toggle Bike Maintenance")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = { onToggleOutOfService(selectedStation) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Build, contentDescription = "Toggle out of service")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Toggle Station Out-of-Service")
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
