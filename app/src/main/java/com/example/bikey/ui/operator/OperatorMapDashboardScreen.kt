@@ -78,6 +78,17 @@ fun OperatorMapDashboardScreen(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
+    suspend fun refreshStationsAndSyncSelection() {
+        val refreshed = mapAPI.map()
+        if (refreshed.isSuccessful) {
+            val newStations = refreshed.body() ?: stations
+            stations = newStations
+            selectedStation?.let { old ->
+                selectedStation = newStations.find { it.id == old.id }
+            }
+        }
+    }
+
     // --- Operator Actions ---
 
     fun moveBike(bike: BicycleResponse,from: DockingStationResponse, to: DockingStationResponse) {
@@ -102,8 +113,7 @@ fun OperatorMapDashboardScreen(
                 if (res.isSuccessful) {
                     Toast.makeText(context, "✅ Moved bike ${bike.id} to ${to.name}", Toast.LENGTH_SHORT).show()
                     // Refresh stations after move
-                    val response = mapAPI.map()
-                    if (response.isSuccessful) stations = response.body() ?: stations
+                    refreshStationsAndSyncSelection()
                 } else {
                     Toast.makeText(context, "❌ Move failed (${res.code()})", Toast.LENGTH_SHORT).show()
                 }
@@ -113,19 +123,18 @@ fun OperatorMapDashboardScreen(
         }
     }
 
-    fun toggleBikeMaintenance(station: DockingStationResponse) {
+    fun toggleBikeMaintenance(station: DockingStationResponse, bike: BicycleResponse) {
         scope.launch {
             try {
                 val req = ToggleBikeMaintenanceRequest(
                     dockingStationId = station.id,
                     userId = operatorId,
-                    bikeId = station.docks.firstOrNull { it.bike != null }?.bike?.id ?: return@launch
+                    bikeId = bike.id
                 )
                 val res = bikeAPI.toggleBikeMaintenance(req)
                 if (res.isSuccessful) {
-                    Toast.makeText(context, "Bike marked under maintenance", Toast.LENGTH_SHORT).show()
-                    val refreshed = mapAPI.map()
-                    if (refreshed.isSuccessful) stations = refreshed.body() ?: stations
+                    Toast.makeText(context, "Bike ${bike.id} maintenance toggled", Toast.LENGTH_SHORT).show()
+                    refreshStationsAndSyncSelection()
                 } else {
                     Toast.makeText(context, "Maintenance failed (${res.code()})", Toast.LENGTH_SHORT).show()
                 }
@@ -134,6 +143,7 @@ fun OperatorMapDashboardScreen(
             }
         }
     }
+
 
     fun toggleStationOutOfService(station: DockingStationResponse) {
         scope.launch {
@@ -145,8 +155,7 @@ fun OperatorMapDashboardScreen(
                 val res = bikeAPI.toggleStationOutOfService(req)
                 if (res.isSuccessful) {
                     Toast.makeText(context, "Station out-of-service toggled", Toast.LENGTH_SHORT).show()
-                    val refreshed = mapAPI.map()
-                    if (refreshed.isSuccessful) stations = refreshed.body() ?: stations
+                    refreshStationsAndSyncSelection()
                 } else {
                     Toast.makeText(context, "Toggle failed (${res.code()})", Toast.LENGTH_SHORT).show()
                 }
@@ -162,6 +171,7 @@ fun OperatorMapDashboardScreen(
                 if (refreshed.isSuccessful) {
                     stations = refreshed.body() ?: stations
                     Toast.makeText(context, "System refreshed", Toast.LENGTH_SHORT).show()
+                    refreshStationsAndSyncSelection()
                 } else {
                     Toast.makeText(context, "Failed to refresh (${refreshed.code()})", Toast.LENGTH_SHORT).show()
                 }
@@ -202,9 +212,19 @@ fun OperatorMapDashboardScreen(
                         title = station.name,
                         snippet = "Bikes: ${station.numOccupiedDocks}/${station.capacity}",
                         onInfoWindowClick = {
-                            selectedStation = station
                             panelExpanded = true
+                            scope.launch {
+                                val refreshed = mapAPI.map()
+                                if (refreshed.isSuccessful) {
+                                    val newStations = refreshed.body() ?: stations
+                                    stations = newStations
+                                    selectedStation = newStations.find { it.id == station.id }
+                                } else {
+                                    selectedStation = station
+                                }
+                            }
                         }
+
                     )
                 }
             }
@@ -236,18 +256,26 @@ fun OperatorMapDashboardScreen(
             isExpanded = panelExpanded,
             onExpandChange = { panelExpanded = it },
             onMoveBike = { station ->
-                selectedStation = station
-                showMoveBikeDialog = true
+                scope.launch {
+                    refreshStationsAndSyncSelection()
+                    selectedStation = stations.find { it.id == station.id }
+                    showMoveBikeDialog = true
+                }
             },
             onMarkMaintenance = { station ->
-                selectedStation = station
-                showMaintenanceDialog = true},
+                scope.launch {
+                    refreshStationsAndSyncSelection()
+                    selectedStation = stations.find { it.id == station.id }
+                    showMaintenanceDialog = true
+                }
+            },
             onToggleOutOfService = { station -> toggleStationOutOfService(station) },
             onRestoreSystem = { restoreSystem() },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
         )
+
         if (showMoveBikeDialog && selectedStation != null) {
             SelectBikeDialog(
                 station = selectedStation!!,
@@ -267,12 +295,25 @@ fun OperatorMapDashboardScreen(
                     moveBike(bikeToMove!!, selectedStation!!, dest)
                     // reset flow after move
                     bikeToMove = null
-                    selectedStation = null
                     panelExpanded = false
                 },
                 onDismiss = { bikeToMove = null }
             )
         }
+        if (showMaintenanceDialog && selectedStation != null) {
+            SelectBikeDialog(
+                station = selectedStation!!,
+                onBikeSelected = { selected ->
+                    bikeToToggleMaintenance = selected
+                    showMaintenanceDialog = false
+                    toggleBikeMaintenance(selectedStation!!, selected)
+                    bikeToToggleMaintenance = null
+                    panelExpanded = false
+                },
+                onDismiss = { showMaintenanceDialog = false }
+            )
+        }
+
 
     }
 
@@ -462,7 +503,7 @@ fun SelectBikeDialog(
     onDismiss: () -> Unit
 ) {
     // collect available bikes from docks
-    val availableBikes = remember(station) { station.docks.mapNotNull { it.bike } }
+    val availableBikes = station.docks.mapNotNull { it.bike }
 
     AlertDialog(
         onDismissRequest = onDismiss,
