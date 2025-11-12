@@ -65,6 +65,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
+    //add icon compose library
+    implementation("androidx.compose.material:material-icons-extended:1.7.3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     // implementation(libs.firebase.messaging.ktx)
     debugImplementation("androidx.compose.ui:ui-tooling")

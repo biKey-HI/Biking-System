@@ -44,7 +44,11 @@ class OperatorController(
         val bike = fromStation.docks.firstOrNull {it.bike?.id == UUID.fromString(req.bikeId)}?.bike
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Bike not found in first station")
 
-        val toDock = toStation.docks.firstOrNull {it.id == UUID.fromString(req.toDockId)}
+        val toDock = req.toDockId?.let { id ->
+            toStation.docks.firstOrNull { it.id == UUID.fromString(id) }
+        } ?: toStation.docks
+            .firstOrNull { it.bike == null } // only truly free docks
+        ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "No free dock in destination station")
 
         val result = fromStation.moveBikeFromThisStation(user.id ?: UUID.randomUUID(), bike, toStation, toDock?.id, userRepo)
         result?.let {
