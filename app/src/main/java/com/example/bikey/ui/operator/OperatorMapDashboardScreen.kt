@@ -111,11 +111,11 @@ fun OperatorMapDashboardScreen(
                 )
                 val res = bikeAPI.moveBike(req)
                 if (res.isSuccessful) {
-                    Toast.makeText(context, "✅ Moved bike ${bike.id} to ${to.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Moved bike ${bike.id} to ${to.name}", Toast.LENGTH_SHORT).show()
                     // Refresh stations after move
                     refreshStationsAndSyncSelection()
                 } else {
-                    Toast.makeText(context, "❌ Move failed (${res.code()})", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Move failed (${res.code()})", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -277,6 +277,9 @@ fun OperatorMapDashboardScreen(
         )
 
         if (showMoveBikeDialog && selectedStation != null) {
+            LaunchedEffect(selectedStation) {
+                refreshStationsAndSyncSelection()
+            }
             SelectBikeDialog(
                 station = selectedStation!!,
                 onBikeSelected = { selected ->
@@ -287,6 +290,9 @@ fun OperatorMapDashboardScreen(
             )
         }
         if (!showMoveBikeDialog && bikeToMove != null && selectedStation != null) {
+            LaunchedEffect(selectedStation) {
+                refreshStationsAndSyncSelection()
+            }
             SelectDestinationStationDialog(
                 originStation = selectedStation!!,
                 allStations = stations.filter { it.id != selectedStation!!.id },
@@ -301,6 +307,9 @@ fun OperatorMapDashboardScreen(
             )
         }
         if (showMaintenanceDialog && selectedStation != null) {
+            LaunchedEffect(selectedStation) {
+                refreshStationsAndSyncSelection()
+            }
             SelectBikeDialog(
                 station = selectedStation!!,
                 onBikeSelected = { selected ->
