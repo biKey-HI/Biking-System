@@ -5,6 +5,7 @@ package com.example.bikey
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -25,8 +26,12 @@ import com.example.bikey.ui.welcome.WelcomeScreen
 import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
+import com.example.bikey.ui.operator.model.DockingStationResponse
 import com.example.bikey.ui.rider.RiderDashboardScreen
 import com.example.bikey.ui.rider.RideHistoryScreen
+import com.example.bikey.ui.rider.ReservationScreen
+import kotlinx.serialization.json.Json
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -159,9 +164,28 @@ class MainActivity : ComponentActivity() {
                                     nav.navigate("welcome") {
                                         popUpTo("welcome") { inclusive = true }
                                     }
+                                },
+                                onReserveBike = { station ->
+                                    val json = Uri.encode(Json.encodeToString(DockingStationResponse.serializer(), station))
+                                    nav.navigate("reservation/$json")
                                 }
                             )
                         }
+                        composable("reservation/{stationJson}") { backStackEntry ->
+                            val stationJson = backStackEntry.arguments?.getString("stationJson")
+                            val station = stationJson?.let {
+                                Json.decodeFromString(DockingStationResponse.serializer(), it)
+                            }
+
+                            ReservationScreen(
+                                station = station,
+                                riderId = UserContext.id.toString(),
+                                onBack = { nav.popBackStack() }
+                            )
+                        }
+
+
+
 
                         composable("operatorDashboard/{email}") { backStackEntry ->
                             val email = backStackEntry.arguments?.getString("email") ?: ""
@@ -180,6 +204,7 @@ class MainActivity : ComponentActivity() {
 
                         composable("operatorMapDashboard") {
                             OperatorMapDashboardScreen(
+                                operatorId = UserContext.id.toString(),
                                 onNavigateBack = {
                                     nav.popBackStack()
                                 }

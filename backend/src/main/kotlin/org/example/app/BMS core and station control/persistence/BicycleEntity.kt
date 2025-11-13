@@ -43,6 +43,7 @@ open class BicycleEntity(
     ) {
         statusTransitions.forEach { it.bike = this }
     }
+    ) {statusTransitions.forEach {it.bike = this}}
 
     fun toDomain(): Bicycle {
         return if (isEBike) {

@@ -31,6 +31,7 @@ fun OperatorDashboardScreen(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
+            .safeDrawingPadding()
     ) {
         // Header
         Row(

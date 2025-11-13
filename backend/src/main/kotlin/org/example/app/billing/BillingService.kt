@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service
 import java.time.Duration
 import java.util.UUID
 import org.example.app.user.PaymentStrategyType
+import org.slf4j.LoggerFactory
 import java.util.Optional
 
 @Service

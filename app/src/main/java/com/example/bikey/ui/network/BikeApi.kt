@@ -71,6 +71,40 @@ data class RideHistoryItemDTO(
     val cardHolderName: String? = null,
     val savedCardLast4: String? = null,
     val provider: String? = null
+@Serializable
+data class ReserveBikeRequest(
+    val stationId: String,
+    val bikeId: String,
+    val userId: String
+)
+
+@Serializable
+data class ReserveBikeResponse(
+    val stationId: String,
+    val bikeId: String,
+    val reservedUntilEpochMs: Long
+)
+
+@Serializable
+data class MoveBikeRequest(
+    val fromStationId: String,
+    val userId: String,
+    val bikeId: String,
+    val toDockId: String? = null,
+    val toStationId: String
+)
+
+@Serializable
+data class ToggleStationOutOfServiceRequest(
+    val dockingStationId: String,
+    val userId: String
+)
+
+@Serializable
+data class ToggleBikeMaintenanceRequest(
+    val dockingStationId: String,
+    val userId: String,
+    val bikeId: String
 )
 
 interface BikeAPI {
@@ -82,7 +116,19 @@ interface BikeAPI {
 
     @retrofit2.http.GET("api/ride-history/{userId}")
     suspend fun getRideHistory(@retrofit2.http.Path("userId") userId: String): Response<List<RideHistoryItemDTO>>
+    @POST("api/reserve-bike")
+    suspend fun reserveBike(@Body body: ReserveBikeRequest): Response<ReserveBikeResponse>
+
+    @POST("api/move-bike")
+    suspend fun moveBike(@Body body: MoveBikeRequest): Response<Boolean?>
+
+    @POST("api/out-of-service-station")
+    suspend fun toggleStationOutOfService(@Body body: ToggleStationOutOfServiceRequest): Response<Unit?>
+
+    @POST("api/maintenance-bike")
+    suspend fun toggleBikeMaintenance(@Body body: ToggleBikeMaintenanceRequest): Response<Unit?>
 }
+
 
 private val bikeClient = OkHttpClient.Builder()
     .callTimeout(8, TimeUnit.SECONDS)
