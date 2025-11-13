@@ -49,3 +49,14 @@ data class PaymentPayload(
     val cardNumber: String? = null,
     val cvv3: String? = null
 )
+
+@Serializable
+data class PaymentPayload(
+    val cardHolderName: String,
+    val provider: String? = null,
+    val token: String? = null,
+    val cardBrand: String? = null,
+    val cardLast4: String? = null,
+    val cardNumber: String? = null,
+    val cvv3: String? = null
+)
