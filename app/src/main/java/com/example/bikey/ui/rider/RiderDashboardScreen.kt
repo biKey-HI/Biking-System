@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,6 +56,15 @@ import com.example.bikey.ui.pricing.PricingScreen
 import androidx.navigation.compose.composable
 import com.example.bikey.ui.PricingPlan
 import com.example.bikey.ui.UserContext
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import com.example.bikey.ui.network.RideHistoryItemDTO 
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 
 data class ActiveRideInfo(
@@ -852,11 +862,26 @@ fun HamburgerMenu(
                             color = PureWhite
                         )
                     )
-                    Text(
-                        text = "Rider Account",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = PureWhite.copy(alpha = 0.8f)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Rider Account",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PureWhite.copy(alpha = 0.8f)
+                        )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PureWhite.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = UserContext.pricingPlan?.displayName ?: "No Plan",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PureWhite.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             }
 
@@ -884,7 +909,7 @@ fun HamburgerMenu(
             MenuItemButton(
                 icon = Icons.Default.DateRange,
                 text = "Ride History",
-                onClick = { /* TODO */ }
+                onClick = { UserContext.nav?.navigate("rideHistory") }
             )
 
             MenuItemButton(
@@ -1339,3 +1364,390 @@ private fun CostItem(label: String, cents: Int, isTotal: Boolean = false) {
         )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RideHistoryScreen(
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var rides by remember { mutableStateOf<List<RideHistoryItemDTO>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val userId = UserContext.id?.toString()
+        if (userId == null) {
+            errorMessage = "User not logged in"
+            isLoading = false
+            return@LaunchedEffect
+        }
+
+        scope.launch {
+            try {
+                isLoading = true
+                val response = bikeAPI.getRideHistory(userId)
+                if (response.isSuccessful) {
+                    rides = response.body() ?: emptyList()
+                    errorMessage = null
+                } else {
+                    errorMessage = "Failed to load ride history: ${response.code()}"
+                    Log.e("RideHistory", "Failed to load: ${response.code()} ${response.message()}")
+                }
+            } catch (e: Exception) {
+                errorMessage = "Error loading ride history: ${e.message}"
+                Log.e("RideHistory", "Error loading ride history", e)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Ride History",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = DarkGreen
+                        )
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = EcoGreen
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = PureWhite
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .systemBarsPadding()
+        ) {
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = EcoGreen)
+                    }
+                }
+                errorMessage != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = errorMessage ?: "Unknown error",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = onBack,
+                            colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
+                        ) {
+                            Text("Go Back", color = PureWhite)
+                        }
+                    }
+                }
+                rides.isEmpty() -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No rides yet",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreen
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Your completed trips will appear here",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(rides) { ride ->
+                            RideHistoryItem(ride = ride)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RideHistoryItem(ride: RideHistoryItemDTO) {
+    // State to manage expansion
+    var isExpanded by remember { mutableStateOf(false) }
+
+    val dateFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT)
+        .withZone(ZoneId.systemDefault())
+    
+    val startTime = try {
+        Instant.parse(ride.summary.startTime)
+    } catch (e: Exception) {
+        null
+    }
+
+    Card(
+        onClick = { isExpanded = !isExpanded },
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header with date and cost
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    startTime?.let {
+                        Text(
+                            text = dateFormatter.format(it),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = DarkGreen
+                            )
+                        )
+                    }
+                    Text(
+                        text = if (ride.summary.isEBike) "E-Bike" else "Classic Bike",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+                // Show plan name if subscription and cost is $0, otherwise show cost
+                val isSubscription = ride.paymentStrategy != PricingPlan.DEFAULT_PAY_NOW.displayName
+                val costText = if (isSubscription && ride.summary.cost.totalCents == 0) {
+                    ride.paymentStrategy
+                } else {
+                    "$${ride.summary.cost.totalCents / 100.0}"
+                }
+                Text(
+                    text = costText,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = EcoGreen
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            HorizontalDivider()
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Route information
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = EcoGreen,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = ride.summary.startStationName,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = DarkGreen
+                    )
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .padding(vertical = 4.dp)
+                    )
+                    Text(
+                        text = ride.summary.endStationName,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = DarkGreen
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Duration and details
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "⏱ ${ride.summary.durationMinutes} min",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                if (ride.summary.cost.overtimeCents != null && ride.summary.cost.overtimeCents > 0) {
+                    Text(
+                        text = "Overtime: $${ride.summary.cost.overtimeCents / 100.0}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFFF6B6B)
+                    )
+                }
+            }
+            // Expandable Bill Section Toggle
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Trip ID: ${ride.summary.tripId}",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.Gray
+                    )
+                )
+
+                Text(
+                    text = "Show Bill ${if (isExpanded) "▲" else "▼"}",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = EcoGreen,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    // Click handler is on the main Card
+                )
+            }
+
+            // Detailed Bill Content (conditionally shown)
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(thickness = 1.dp, color = LightGray)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // --- COST BREAKDOWN ---
+                Text(
+                    text = "Cost Breakdown",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = DarkGreen
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                with(ride.summary.cost) {
+                    val isPayAsYouGo = ride.paymentStrategy == PricingPlan.DEFAULT_PAY_NOW.displayName
+                    val isSubscription = !isPayAsYouGo
+
+                    if (isPayAsYouGo && baseCents > 0) {
+                        CostItem("Base fare (Unlock fee)", baseCents)
+                    }
+
+                    // We rely on the cents being non-zero to show the line item
+                    eBikeSurchargeCents?.let { if (it > 0) CostItem("E-Bike Surcharge", it) }
+                    overtimeCents?.let { if (it > 0) CostItem("Overtime charges", it) }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
+                    // Show plan name if subscription and cost is $0, otherwise show cost
+                    if (isSubscription && totalCents == 0) {
+                        TripDetailItem("Total Charged", ride.paymentStrategy)
+                    } else {
+                        CostItem("Total Charged", totalCents, isTotal = true)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // --- PAYMENT INFORMATION ---
+                Text(
+                    text = "Payment Information",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = DarkGreen
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Always show the payment plan/strategy
+                val isSubscription = ride.paymentStrategy != PricingPlan.DEFAULT_PAY_NOW.displayName
+                TripDetailItem(
+                    label = if (isSubscription) "Subscription Plan" else "Payment Plan",
+                    value = ride.paymentStrategy
+                )
+
+                // Show cardholder name if available
+                if (ride.cardHolderName != null) {
+                    TripDetailItem("Cardholder Name", ride.cardHolderName)
+                }
+
+                // Show card last 4 digits if available
+                if (ride.savedCardLast4 != null) {
+                    val cardProvider = ride.provider ?: "Card"
+                    TripDetailItem("Card Used", "$cardProvider ending in •••• ${ride.savedCardLast4}")
+                }
+
+                // Payment status summary
+                val paymentStatus = when {
+                    isSubscription -> "Covered by subscription"
+                    ride.summary.cost.totalCents == 0 -> "No charge"
+                    ride.hasSavedCard -> "Paid via card on file"
+                    else -> "Payment processed"
+                }
+                TripDetailItem("Payment Status", paymentStatus)
+            }
+        }
+    }
+}
+

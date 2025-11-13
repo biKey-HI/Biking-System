@@ -62,6 +62,15 @@ data class ReturnAndSummaryResponse(
     val provider: String? = null
 )
 
+// for ride history billing info
+@Serializable
+data class RideHistoryItemDTO(
+    val summary: TripSummaryDTO,
+    val paymentStrategy: String,
+    val hasSavedCard: Boolean,
+    val cardHolderName: String? = null,
+    val savedCardLast4: String? = null,
+    val provider: String? = null
 @Serializable
 data class ReserveBikeRequest(
     val stationId: String,
@@ -105,6 +114,8 @@ interface BikeAPI {
     @POST("api/return")
     suspend fun returnBike(@Body body: ReturnBikeRequest): Response<ReturnAndSummaryResponse>
 
+    @retrofit2.http.GET("api/ride-history/{userId}")
+    suspend fun getRideHistory(@retrofit2.http.Path("userId") userId: String): Response<List<RideHistoryItemDTO>>
     @POST("api/reserve-bike")
     suspend fun reserveBike(@Body body: ReserveBikeRequest): Response<ReserveBikeResponse>
 

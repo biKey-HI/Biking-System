@@ -9,8 +9,6 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.*
-import jakarta.persistence.AttributeConverter
-import jakarta.persistence.Converter
 import org.example.app.bmscoreandstationcontrol.api.BicycleResponse
 
 @Entity
@@ -42,6 +40,9 @@ open class BicycleEntity(
         statusTransitions = bike.statusTransitions.map { BikeStateTransitionEntity(it) }.toMutableList(),
         reservationExpiryTime = bike.reservationExpiryTime,
         isEBike = bike is EBike
+    ) {
+        statusTransitions.forEach { it.bike = this }
+    }
     ) {statusTransitions.forEach {it.bike = this}}
 
     fun toDomain(): Bicycle {
