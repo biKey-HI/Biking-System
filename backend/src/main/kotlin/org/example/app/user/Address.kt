@@ -1,14 +1,10 @@
 package org.example.app.user
 
 import jakarta.persistence.*
-<<<<<<< HEAD
-import org.example.app.dockingstation.DockingStation
-import org.example.app.user.Province
-=======
+import org.example.app.bmscoreandstationcontrol.persistence.DockingStationEntity
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.util.UUID
->>>>>>> 6134ef5 (Moved All Current Bike and Station Logic to the Backend)
 
 @Entity
 @Table(
@@ -35,5 +31,5 @@ data class Address(
 
     //array of docking station ids
     @OneToMany(mappedBy = "address")
-    val dockingStations: MutableList<DockingStation> = mutableListOf()
+    val dockingStations: MutableList<DockingStationEntity> = mutableListOf()
 )

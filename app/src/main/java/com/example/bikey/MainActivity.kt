@@ -28,6 +28,7 @@ import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
 import com.example.bikey.ui.operator.model.DockingStationResponse
 import com.example.bikey.ui.rider.RiderDashboardScreen
+import com.example.bikey.ui.rider.RideHistoryScreen
 import com.example.bikey.ui.rider.ReservationScreen
 import kotlinx.serialization.json.Json
 
@@ -203,7 +204,16 @@ class MainActivity : ComponentActivity() {
 
                         composable("operatorMapDashboard") {
                             OperatorMapDashboardScreen(
+                                operatorId = UserContext.id.toString(),
                                 onNavigateBack = {
+                                    nav.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable("rideHistory") {
+                            RideHistoryScreen(
+                                onBack = {
                                     nav.popBackStack()
                                 }
                             )

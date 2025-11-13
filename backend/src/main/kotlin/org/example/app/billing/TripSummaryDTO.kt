@@ -33,3 +33,13 @@ data class ReturnAndSummaryResponse(
     val savedCardLast4: String? = null,
     val provider: String? = null
 )
+
+// added for ride history billing info
+data class RideHistoryItemDTO(
+    val summary: TripSummaryDTO,
+    val paymentStrategy: String,
+    val hasSavedCard: Boolean,
+    val cardHolderName: String? = null,
+    val savedCardLast4: String? = null,
+    val provider: String? = null
+)

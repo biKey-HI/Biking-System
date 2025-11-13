@@ -9,8 +9,6 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.*
-import jakarta.persistence.AttributeConverter
-import jakarta.persistence.Converter
 import org.example.app.bmscoreandstationcontrol.api.BicycleResponse
 
 @Entity
