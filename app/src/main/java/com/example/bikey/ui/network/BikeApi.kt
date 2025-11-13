@@ -71,6 +71,8 @@ data class RideHistoryItemDTO(
     val cardHolderName: String? = null,
     val savedCardLast4: String? = null,
     val provider: String? = null
+)
+
 @Serializable
 data class ReserveBikeRequest(
     val stationId: String,

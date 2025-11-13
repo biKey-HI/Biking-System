@@ -12,7 +12,7 @@ pluginManagement {
     }
     plugins {
         // Android + Kotlin
-        id("com.android.application") version "8.6.0"
+        id("com.android.application") version "8.13.0"
         kotlin("android") version "2.0.0"
         kotlin("jvm") version "2.0.0"
         kotlin("plugin.spring") version "2.0.0"

@@ -5,8 +5,6 @@ import org.example.app.bmscoreandstationcontrol.persistence.DockingStationEntity
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.util.UUID
-import org.example.app.dockingstation.DockingStation
-import org.example.app.user.Province
 
 @Entity
 @Table(
