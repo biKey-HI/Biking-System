@@ -203,6 +203,7 @@ class MainActivity : ComponentActivity() {
 
                         composable("operatorMapDashboard") {
                             OperatorMapDashboardScreen(
+                                operatorId = UserContext.id.toString(),
                                 onNavigateBack = {
                                     nav.popBackStack()
                                 }
