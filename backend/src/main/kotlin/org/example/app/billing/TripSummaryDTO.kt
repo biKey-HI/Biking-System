@@ -9,6 +9,7 @@ data class CostBreakdownDTO(
     val minutes: Int,
     val eBikeSurchargeCents: Int?=null,
     val overtimeCents: Int?=null,
+    val flexDollarCents: Int = 0,
     val totalCents: Int
 )
 

@@ -19,5 +19,6 @@ data class LoginResponse(
     @Serializable(with = UUIDSerializer::class)
     val userId: UUID,
     val role: String,
-    val pricingPlan: PricingPlan
+    val pricingPlan: PricingPlan,
+    val flexDollars: Float
 )

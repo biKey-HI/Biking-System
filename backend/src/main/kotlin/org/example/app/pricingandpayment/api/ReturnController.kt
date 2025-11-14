@@ -1,9 +1,9 @@
 package org.example.app.pricingandpayment.api
 
 import org.example.app.billing.BillingService
-import org.example.app.billing.PricingService
 import org.example.app.billing.ReturnAndSummaryResponse
 import org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
+import org.example.app.bmscoreandstationcontrol.persistence.DockingStationRepository
 import org.example.app.pricingandpayment.PaymentService
 import org.example.app.user.PaymentStrategyType
 import org.example.app.user.UserRepository
@@ -20,7 +20,8 @@ class ReturnController(
     private val bikes: BicycleRepository,
     private val billing: BillingService,
     private val payments: PaymentService,
-    private val tripFacade: TripFacade
+    private val tripFacade: TripFacade,
+    private val stations: DockingStationRepository
 ) {
 
     // debug
@@ -49,6 +50,13 @@ class ReturnController(
         }
 
         try {
+            val station = stations.findById(destStationUuid).orElseThrow {
+                logger.warn("Station not found for id=${destStationUuid}")
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Station not found")
+            }
+            val receivesFlexDollars = station.offersFlexDollars()
+            LoggerFactory.getLogger("ReceivesFlexDollars").info("Flex Dollars Received: ${receivesFlexDollars}")
+
             val trip = try {
                 tripFacade.completeTripAndFetchDomain(tripUuid, destStationUuid, body.dockId)
             } catch (e: NoSuchElementException) {
@@ -61,10 +69,18 @@ class ReturnController(
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Rider not found")
             }
 
-            val summary = billing.summarize(trip, bikes, rider.paymentStrategy)
+            val summary = billing.summarize(trip, bikes, rider.paymentStrategy, rider)
 
             val requiresPayment = payments.requiresImmediatePayment(rider) && summary.cost.totalCents > 0
             val saved = payments.getSavedCard(rider.id!!)
+
+            LoggerFactory.getLogger("UsedFlexDollars").info("Flex Dollars Applied: ${summary.cost.flexDollarCents.toFloat()/100.0}")
+
+            rider.flexDollars += (if(receivesFlexDollars) 0.25 else 0.0).toFloat()
+            users.save(rider)
+
+            LoggerFactory.getLogger("NewFlexDollars").info("Flex Dollars Updated: ${rider.flexDollars}")
+
             return ReturnAndSummaryResponse(
                 summary = summary,
                 paymentStrategy = rider.paymentStrategy.name,
@@ -94,7 +110,7 @@ class ReturnController(
             val user = users.findById(userId).orElseThrow()
             payments.handlePayment(
                 user,
-                billing.summarize(tripFacade.getTripDomain(tripUuid), bikes, user.paymentStrategy)
+                billing.summarize(tripFacade.getTripDomain(tripUuid), bikes, user.paymentStrategy, user)
             )
         } catch (e: IllegalArgumentException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid tripId")

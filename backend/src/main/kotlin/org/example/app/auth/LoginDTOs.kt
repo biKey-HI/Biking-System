@@ -18,5 +18,6 @@ data class LoginResponse(
     val email: String,
     val userId: UUID,
     val role: String,
-    val pricingPlan: PaymentStrategyType? = null
+    val pricingPlan: PaymentStrategyType? = null,
+    val flexDollars: Float = 0.0f
 )

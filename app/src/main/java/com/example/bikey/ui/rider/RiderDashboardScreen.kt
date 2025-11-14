@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,16 +43,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.produceState
 import com.example.bikey.ui.network.ReturnAndSummaryResponse
-import com.example.bikey.ui.network.TripSummaryDTO
-import com.example.bikey.ui.network.CostBreakdownDTO
-import kotlinx.coroutines.delay
 import com.google.maps.android.compose.rememberCameraPositionState
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.HorizontalDivider
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.example.bikey.ui.pricing.PricingScreen
-import androidx.navigation.compose.composable
 import com.example.bikey.ui.PricingPlan
 import com.example.bikey.ui.UserContext
 import java.time.Instant
@@ -116,6 +108,8 @@ fun RiderDashboardScreen(
                 numFreeDocks = it.numFreeDocks + 1
             ) else it
         }
+
+        if(selectedStation?.id == station.id) selectedStation = station
 
         scope.launch {
             try {
@@ -186,6 +180,9 @@ fun RiderDashboardScreen(
                     val stationsResponse = mapAPI.map()
                     if (stationsResponse.isSuccessful) {
                         stations = stationsResponse.body() ?: emptyList()
+                        selectedStation = stations.firstOrNull { it.id == selectedStation?.id } ?: selectedStation
+                        UserContext.user?.flexDollars -= (showTripSummary?.summary?.cost?.flexDollarCents ?: 0).toFloat()/100f
+                        UserContext.user?.flexDollars += if(selectedStation!!.numOccupiedDocks.toFloat()/(selectedStation!!.numOccupiedDocks + selectedStation!!.numFreeDocks).toFloat() < 0.25f) 0.25f else 0f
                     }
                 } else {
                     val errorBody = res.errorBody()?.string()
@@ -237,6 +234,7 @@ fun RiderDashboardScreen(
     if (showTripSummary != null) {
             TripSummaryScreen(
                 summary = showTripSummary!!,
+                offersFlexDollars = selectedStation?.let{ selectedStation!!.numOccupiedDocks.toFloat()/(selectedStation!!.numOccupiedDocks + selectedStation!!.numFreeDocks).toFloat() < 0.25f} ?: false,
                 onDone = {
                     showTripSummary = null
                 }
@@ -891,7 +889,7 @@ fun HamburgerMenu(
             MenuItemButton(
                 icon = Icons.Default.Person,
                 text = "Edit Profile",
-                onClick = { /* TODO */ }
+                onClick = { UserContext.nav?.navigate("accountInformation") }
             )
 
             MenuItemButton(
@@ -1225,7 +1223,8 @@ fun StationSearchItem(
 @Composable
 fun TripSummaryScreen(
     summary: ReturnAndSummaryResponse,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    offersFlexDollars: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -1293,8 +1292,10 @@ fun TripSummaryScreen(
                     if(UserContext.pricingPlan == PricingPlan.DEFAULT_PAY_NOW) {CostItem("Base fare", baseCents)}
                     eBikeSurchargeCents?.let { CostItem("Electricity rate ($minutes mins)", it) }
                     overtimeCents?.let { if(overtimeCents != 0) CostItem("Overtime charges", it) }
+                    if(flexDollarCents > 0) CostItem("Flex Dollars Used", -1*flexDollarCents)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
-                    CostItem("Total", maxOf(totalCents, (if(UserContext.pricingPlan == PricingPlan.DEFAULT_PAY_NOW) baseCents else 0) + (eBikeSurchargeCents ?: 0) + (overtimeCents ?: 0)), isTotal = true)
+                    CostItem("Total", totalCents)
+                    if(offersFlexDollars) CostItem("Flex Dollars Added to Account", 25)
                 }
             }
         }

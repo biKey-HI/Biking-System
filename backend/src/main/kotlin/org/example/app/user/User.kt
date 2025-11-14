@@ -5,8 +5,10 @@ package org.example.app.user
 import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import java.awt.geom.Line2D
 import java.time.Instant
 import java.util.UUID
+import kotlin.math.max
 
 @Entity
 @Table(
@@ -58,5 +60,14 @@ class User(
     var paymentStrategy: PaymentStrategyType = PaymentStrategyType.DEFAULT_PAY_NOW,
 
     @Column(nullable = false)
-    var hasActiveSubscription: Boolean = false
-)
+    var hasActiveSubscription: Boolean = false,
+
+    @Column(nullable = false)
+    var flexDollars: Float = 0.0.toFloat()
+) {
+    fun useFlexDollars(on: Float): Float {
+        val used = on.coerceAtMost(flexDollars)
+        flexDollars = flexDollars - used
+        return used
+    }
+}

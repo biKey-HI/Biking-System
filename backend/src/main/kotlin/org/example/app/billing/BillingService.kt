@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service
 import java.time.Duration
 import java.util.UUID
 import org.example.app.user.PaymentStrategyType
+import org.example.app.user.User
 import org.slf4j.LoggerFactory
 import java.util.Optional
 
@@ -26,11 +27,11 @@ class BillingService(private val pricing: PricingService) {
         val overtimeCents: Int
     )
 
-    fun summarize(trip: TripDomain, bikes: BicycleRepository, pricingPlan: PaymentStrategyType): TripSummaryDTO {
+    fun summarize(trip: TripDomain, bikes: BicycleRepository, pricingPlan: PaymentStrategyType, rider: User): TripSummaryDTO {
         val minutes = Duration.between(trip.startTime, trip.endTime).toMinutes().toInt().coerceAtLeast(0)
         val bikeOpt: Optional<BicycleEntity>? = bikes.findById(trip.bikeId)
         val bike: BicycleEntity? = bikeOpt?.orElse(null)
-        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0)
+        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan, rider)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0, 0)
         return TripSummaryDTO(
             tripId = trip.id,
             riderId = trip.riderId,
