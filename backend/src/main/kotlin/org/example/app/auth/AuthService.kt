@@ -108,6 +108,7 @@ class AuthService(
         val userEmail = user.email
         val userRole = user.role.name
         val userPricingPlan = user.paymentStrategy
+        val userFlexDollars = user.flexDollars
 
         user.notificationToken = if(req.notificationToken == "") {null} else {req.notificationToken}
         userRepository.save(user)
@@ -117,7 +118,8 @@ class AuthService(
             email = userEmail,
             userId = id,
             role = userRole,
-            pricingPlan = userPricingPlan
+            pricingPlan = userPricingPlan,
+            flexDollars = userFlexDollars
         )
     }
 }

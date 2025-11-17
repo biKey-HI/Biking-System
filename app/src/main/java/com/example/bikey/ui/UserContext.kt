@@ -2,7 +2,7 @@ package com.example.bikey.ui
 import androidx.navigation.NavHostController
 import java.util.UUID
 
-class User(val id: UUID = UUID.randomUUID(), val email: String, val isOperator: Boolean = false, var pricingPlan: PricingPlan? = if(isOperator) {null} else {PricingPlan.DEFAULT_PAY_NOW}, var hasReservation: Boolean = false, var reservationStationId: String? = null)
+class User(val id: UUID = UUID.randomUUID(), val email: String, val isOperator: Boolean = false, var pricingPlan: PricingPlan? = if(isOperator) {null} else {PricingPlan.DEFAULT_PAY_NOW}, var hasReservation: Boolean = false, var reservationStationId: String? = null, var flexDollars: Float = 0.0f)
 
 class UserContext {
     companion object {
@@ -13,6 +13,7 @@ class UserContext {
         val pricingPlan: PricingPlan? get() = user?.pricingPlan
         val hasReservation: Boolean? get() = user?.hasReservation
         val reservationStationId: String? get() = user?.reservationStationId
+        val flexDollars: Float get() = user?.flexDollars ?: 0.0f
         var notificationToken: String? = null
         var nav: NavHostController? = null
     }

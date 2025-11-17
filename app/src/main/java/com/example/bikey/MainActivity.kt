@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +26,7 @@ import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
 import com.example.bikey.ui.operator.model.DockingStationResponse
+import com.example.bikey.ui.rider.AccountInformationScreen
 import com.example.bikey.ui.rider.RiderDashboardScreen
 import com.example.bikey.ui.rider.RideHistoryScreen
 import com.example.bikey.ui.rider.ReservationScreen
@@ -77,6 +77,12 @@ class MainActivity : ComponentActivity() {
                             PricingScreen(
                                 onBack = { nav.popBackStack() },
                                 onRegister = { nav.navigate("register") }
+                            )
+                        }
+
+                        composable("accountInformation") {
+                            AccountInformationScreen(
+                                onBack = { nav.popBackStack() }
                             )
                         }
 

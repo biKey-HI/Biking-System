@@ -23,6 +23,7 @@ import org.example.app.bmscoreandstationcontrol.domain.PartiallyFilled
 import org.example.app.user.Address
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.UUID
 
@@ -148,4 +149,9 @@ data class DockingStationEntity(
             stateChanges = stateChanges.map { it.toResponse() },
             reservationUserId = reservationUserId?.toString()
         )
+    fun offersFlexDollars(): Boolean {
+        LoggerFactory.getLogger("Occupied").info("$numOccupiedDocks")
+        LoggerFactory.getLogger("Free").info("$numFreeDocks")
+        return numOccupiedDocks.toFloat()/(numFreeDocks + numOccupiedDocks).toFloat() < 0.25f
+    }
 }
