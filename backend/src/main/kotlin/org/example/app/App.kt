@@ -5,9 +5,12 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.auth.oauth2.GoogleCredentials
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.boot.runApplication
 
+
 @SpringBootApplication
+@EnableAsync
 class App
 
 fun main(args: Array<String>) {
