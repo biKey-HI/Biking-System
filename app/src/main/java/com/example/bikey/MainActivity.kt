@@ -30,6 +30,7 @@ import com.example.bikey.ui.operator.model.DockingStationResponse
 import com.example.bikey.ui.rider.RiderDashboardScreen
 import com.example.bikey.ui.rider.RideHistoryScreen
 import com.example.bikey.ui.rider.ReservationScreen
+import com.example.bikey.ui.rider.LoyaltyRewardsScreen
 import kotlinx.serialization.json.Json
 
 
@@ -213,6 +214,14 @@ class MainActivity : ComponentActivity() {
 
                         composable("rideHistory") {
                             RideHistoryScreen(
+                                onBack = {
+                                    nav.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable("loyaltyRewards") {
+                            LoyaltyRewardsScreen(
                                 onBack = {
                                     nav.popBackStack()
                                 }

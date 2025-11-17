@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
+import org.example.app.loyalty.LoyaltyTier
 
 @Entity
 @Table(
@@ -58,5 +59,9 @@ class User(
     var paymentStrategy: PaymentStrategyType = PaymentStrategyType.DEFAULT_PAY_NOW,
 
     @Column(nullable = false)
-    var hasActiveSubscription: Boolean = false
+    var hasActiveSubscription: Boolean = false,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "loyalty_tier", nullable = false)
+    var loyaltyTier: LoyaltyTier = LoyaltyTier.NONE
 )

@@ -25,7 +25,8 @@ data class AddressResponse(
     val line2: String?,
     val city: String,
     val province: String,
-    val postalCode: String
+    val postalCode: String,
+    val country: String
 )
 
 @Serializable
@@ -37,14 +38,14 @@ data class LatLngResponse(
 @Serializable
 data class DockResponse(
     val id: String,
-    val bike: BicycleResponse?,
-    val status: String
+    val status: String,
+    val bike: BicycleResponse? = null
 )
 
 @Serializable
 data class BicycleResponse(
     val id: String,
-    val bike: BicycleResponse? = null,
+    val status: String,
     val reservationExpiryTime: String? = null,
     val statusTransitions: List<BikeStateTransitionResponse> = emptyList(),
     val isEBike: Boolean = false
@@ -60,7 +61,6 @@ data class BikeStateTransitionResponse(
 
 @Serializable
 data class DockingStationStateTransitionResponse(
-    val forStationId: String,
     val fromState: String,
     val toState: String,
     val atTime: String

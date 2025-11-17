@@ -1,17 +1,19 @@
 package org.example.app.billing
 
-import org.example.app.bmscoreandstationcontrol.domain.Bicycle
 import org.example.app.bmscoreandstationcontrol.persistence.BicycleEntity
 import org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
+import org.example.app.user.UserRepository
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.util.UUID
 import org.example.app.user.PaymentStrategyType
-import org.slf4j.LoggerFactory
 import java.util.Optional
 
 @Service
-class BillingService(private val pricing: PricingService) {
+class BillingService(
+    private val pricing: PricingService,
+    private val userRepository: UserRepository
+) {
 
     // Minimal domain “view” of a completed trip
     data class TripDomain(
@@ -30,7 +32,11 @@ class BillingService(private val pricing: PricingService) {
         val minutes = Duration.between(trip.startTime, trip.endTime).toMinutes().toInt().coerceAtLeast(0)
         val bikeOpt: Optional<BicycleEntity>? = bikes.findById(trip.bikeId)
         val bike: BicycleEntity? = bikeOpt?.orElse(null)
-        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0)
+
+        // Fetch user to apply loyalty discount
+        val user = userRepository.findById(trip.riderId).orElse(null)
+
+        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan, user)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0, null, 0)
         return TripSummaryDTO(
             tripId = trip.id,
             riderId = trip.riderId,
