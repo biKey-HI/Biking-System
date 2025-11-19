@@ -111,6 +111,11 @@ class AuthService(
             var tierChanged = false
             var tierUpgraded = false
             var tierDowngraded = false
+        // Access email, role and plan within transaction to ensure they're loaded
+        val userEmail = user.email
+        val userRole = user.role.name
+        val userPricingPlan = user.paymentStrategy
+        val userFlexDollars = user.flexDollars
 
             if (user.role == UserRole.RIDER) {
                 try {
@@ -157,6 +162,14 @@ class AuthService(
             e.printStackTrace()
             throw e
         }
+        return LoginResponse(
+            token = token,
+            email = userEmail,
+            userId = id,
+            role = userRole,
+            pricingPlan = userPricingPlan,
+            flexDollars = userFlexDollars
+        )
     }
 }
 

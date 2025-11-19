@@ -52,7 +52,7 @@ class RideHistoryController(
             .map { trip ->
                 try {
                     val tripDomain = tripFacade.getTripDomain(trip.id)
-                    val summary = billingService.summarize(tripDomain, bikes, user.paymentStrategy)
+                    val summary = billingService.summarize(tripDomain, bikes, user.paymentStrategy, user)
                     // Construct the new DTO
                     RideHistoryItemDTO(
                         summary = summary,

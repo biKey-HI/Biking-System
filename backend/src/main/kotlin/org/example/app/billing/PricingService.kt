@@ -21,6 +21,13 @@ class PricingService(private val loyaltyService: LoyaltyService) {
 
         val finalCost = baseCost - discountAmount
 
+import org.springframework.stereotype.Service
+
+@Service
+class PricingService {
+    fun price(bike: Bicycle, pricingPlan: PaymentStrategyType, rider: User): CostBreakdownDTO {
+        val total = bike.calculateCost(pricingPlan) ?: 0f
+        val flexDollars = rider.useFlexDollars(total)
         return CostBreakdownDTO(
             baseCents = (bike.baseCost*100).toInt(),
             perMinuteCents = 0,
@@ -30,6 +37,8 @@ class PricingService(private val loyaltyService: LoyaltyService) {
             discountCents = (discountAmount * 100).toInt(),
             loyaltyTier = user?.loyaltyTier?.displayName,
             totalCents = (finalCost*100).toInt()
+            flexDollarCents = (flexDollars*100).toInt(),
+            totalCents = ((total - flexDollars)*100).toInt()
         )
     }
 }

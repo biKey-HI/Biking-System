@@ -102,7 +102,7 @@ class LoginViewModel(
 
                         set { copy(isLoading = false, successMsg = "Successfully logged in!", successEmail = body.email, userRole = body.role) }
 
-                        UserContext.user = User(body.userId, body.email, body.role == "OPERATOR", pricingPlan = body.pricingPlan)
+                        UserContext.user = User(body.userId, body.email, body.role == "OPERATOR", pricingPlan = body.pricingPlan, flexDollars = body.flexDollars)
 
                         _events.emit(LoginEvent.Success("Welcome back!", body.email, body.role))
                     } else {

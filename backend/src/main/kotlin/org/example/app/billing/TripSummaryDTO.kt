@@ -11,6 +11,7 @@ data class CostBreakdownDTO(
     val overtimeCents: Int?=null,
     val discountCents: Int = 0,
     val loyaltyTier: String? = null,
+    val flexDollarCents: Int = 0,
     val totalCents: Int
 )
 

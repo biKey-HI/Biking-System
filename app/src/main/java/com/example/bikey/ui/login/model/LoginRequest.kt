@@ -35,4 +35,5 @@ data class LoginResponse(
 
     val newTier: String? = null
 
+    val flexDollars: Float
 )

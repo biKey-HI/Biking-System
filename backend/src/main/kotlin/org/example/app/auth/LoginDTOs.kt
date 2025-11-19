@@ -38,4 +38,6 @@ data class LoginResponse(
 
     val newTier: String? = null
 
+    val pricingPlan: PaymentStrategyType? = null,
+    val flexDollars: Float = 0.0f
 )

@@ -5,9 +5,11 @@ package org.example.app.user
 import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import java.awt.geom.Line2D
 import java.time.Instant
 import java.util.UUID
 import org.example.app.loyalty.LoyaltyTier
+import kotlin.math.max
 
 @Entity
 @Table(
@@ -65,3 +67,12 @@ class User(
     @Column(name = "loyalty_tier", nullable = false)
     var loyaltyTier: LoyaltyTier = LoyaltyTier.NONE
 )
+    @Column(nullable = false)
+    var flexDollars: Float = 0.0.toFloat()
+) {
+    fun useFlexDollars(on: Float): Float {
+        val used = on.coerceAtMost(flexDollars)
+        flexDollars = flexDollars - used
+        return used
+    }
+}
