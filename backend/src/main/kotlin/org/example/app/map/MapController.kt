@@ -3,24 +3,28 @@ package org.example.app.map
 import org.example.app.bmscoreandstationcontrol.api.DockingStationResponse
 import org.example.app.bmscoreandstationcontrol.persistence.DockingStationRepository
 import org.slf4j.LoggerFactory
-import org.springframework.web.bind.annotation.*
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.*
 
-@RestController
 @CrossOrigin(origins = ["*"])
+@RestController
 @RequestMapping("/api/map")
-class MapController(
-    private val mapService: MapService
-) {
-    @GetMapping
-    fun getAllStations(): List<DockingStationResponse> = mapService.getAllDockingStations()
+class MapController(private val mapService: MapService) {
+
+    private val logger = LoggerFactory.getLogger(MapController::class.java)
 
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     fun map(): List<DockingStationResponse> {
-        LoggerFactory.getLogger(MapController::class.java).info("Map endpoint hit!")
+        logger.info("Map endpoint hit!")
+        return mapService.getAllDockingStations()
+    }
+
+    @GetMapping
+    fun getAllStations(): List<DockingStationResponse> {
+        logger.info("Get all stations endpoint hit!")
         return mapService.getAllDockingStations()
     }
 }

@@ -7,7 +7,9 @@ import org.example.app.bmscoreandstationcontrol.persistence.DockingStationReposi
 import org.example.app.pricingandpayment.PaymentService
 import org.example.app.user.PaymentStrategyType
 import org.example.app.user.UserRepository
+import org.example.app.loyalty.TripCompletedEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.http.HttpStatus
@@ -21,6 +23,7 @@ class ReturnController(
     private val billing: BillingService,
     private val payments: PaymentService,
     private val tripFacade: TripFacade,
+    private val eventPublisher: ApplicationEventPublisher
     private val stations: DockingStationRepository
 ) {
 
@@ -63,6 +66,10 @@ class ReturnController(
                 logger.warn("Trip not found or cannot complete trip: $tripUuid", e)
                 throw ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found or cannot complete")
             }
+
+            // Publish TripCompletedEvent to trigger loyalty tier update
+            eventPublisher.publishEvent(TripCompletedEvent(tripId = trip.id, riderId = trip.riderId))
+            logger.info("Published TripCompletedEvent for trip ${trip.id} and rider ${trip.riderId}")
 
             val rider = users.findById(trip.riderId).orElseThrow {
                 logger.warn("Rider not found for id=${trip.riderId}")
