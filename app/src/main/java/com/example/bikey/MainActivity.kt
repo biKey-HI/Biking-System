@@ -121,14 +121,19 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("welcome") { inclusive = true }
                                     }
                                 },
-                                onLoggedIn = { email, role ->
+                                onLoggedIn = { email, isRider, isOperator ->
                                     // Navigate to loading screen first, then to appropriate dashboard
-                                    if (role == "OPERATOR") {
+                                    if (isRider && !isOperator) {
+                                        nav.navigate("loadingToRider/$email") {
+                                            popUpTo("welcome") { inclusive = true }
+                                        }
+                                    } else if (!isRider && isOperator) {
                                         nav.navigate("loadingToOperator/$email") {
                                             popUpTo("welcome") { inclusive = true }
                                         }
-                                    } else {
-                                        nav.navigate("loadingToRider/$email") {
+                                    }else {
+                                        //dual-operator case
+                                        nav.navigate("loadingToOperator/$email") {
                                             popUpTo("welcome") { inclusive = true }
                                         }
                                     }

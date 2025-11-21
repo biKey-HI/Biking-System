@@ -50,6 +50,8 @@ class User(
     @Column(nullable = false)
     var createdAt: Instant = Instant.now(),
 
+    //removed UserRole to support dual role (isOperator/isRider)
+    @Deprecated("Use isOperator/isRider for permission logic")
     // Role default to Rider
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
@@ -63,7 +65,16 @@ class User(
     var hasActiveSubscription: Boolean = false,
 
     @Column(nullable = false)
-    var flexDollars: Float = 0.0.toFloat()
+    var flexDollars: Float = 0.0.toFloat(),
+
+    //Dual role switching
+    @Column(nullable = false)
+    var isRider: Boolean = true,
+
+    @Column(nullable = false)
+    var isOperator: Boolean = false,
+
+
 ) {
     fun useFlexDollars(on: Float): Float {
         val used = on.coerceAtMost(flexDollars)

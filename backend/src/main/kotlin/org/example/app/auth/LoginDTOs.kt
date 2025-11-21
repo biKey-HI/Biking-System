@@ -17,7 +17,8 @@ data class LoginResponse(
     val token: String,
     val email: String,
     val userId: UUID,
-    val role: String,
+    val isRider: Boolean,
+    val isOperator: Boolean,
     val pricingPlan: PaymentStrategyType? = null,
     val flexDollars: Float = 0.0f
 )

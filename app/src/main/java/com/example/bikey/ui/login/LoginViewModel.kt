@@ -24,13 +24,12 @@ data class LoginState(
     val errorMsg: String? = null,
     val successMsg: String? = null,
     val successEmail: String? = null,
-    val userRole: String? = null
 )
 
 sealed interface LoginEvent {
-    data class Success(val msg: String, val email: String, val role: String) : LoginEvent
+    data class Success(val msg: String, val email: String, val isRider: Boolean, val isOperator: Boolean) : LoginEvent
     data class ShowMessage(val message: String) : LoginEvent
-    data class NavigateHome(val email: String, val role: String) : LoginEvent
+    data class NavigateHome(val email: String, val isRider: Boolean, val isOperator: Boolean) : LoginEvent
 }
 
 
@@ -100,11 +99,11 @@ class LoginViewModel(
                         UserContext.notificationToken = if(notificationToken == "") {null} else {notificationToken}
 
 
-                        set { copy(isLoading = false, successMsg = "Successfully logged in!", successEmail = body.email, userRole = body.role) }
+                        set { copy(isLoading = false, successMsg = "Successfully logged in!", successEmail = body.email) }
 
-                        UserContext.user = User(body.userId, body.email, body.role == "OPERATOR", pricingPlan = body.pricingPlan, flexDollars = body.flexDollars)
+                        UserContext.user = User(body.userId, body.email, isRider = body.isRider,isOperator = body.isOperator, pricingPlan = body.pricingPlan, flexDollars = body.flexDollars)
 
-                        _events.emit(LoginEvent.Success("Welcome back!", body.email, body.role))
+                        _events.emit(LoginEvent.Success("Welcome back!", body.email, isRider = body.isRider, isOperator = body.isOperator))
                     } else {
                         val err = "Invalid server response. Please try again."
                         set { copy(isLoading = false, errorMsg = err) }

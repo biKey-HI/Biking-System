@@ -57,7 +57,8 @@ class AuthService(
                 lastName = req.lastName,
                 username = req.username,
                 // Force RIDER role for all registrations
-                role = UserRole.RIDER,
+                isRider = true,
+                isOperator = false,
                 address = address,
                 notificationToken = req.notificationToken
             )
@@ -107,6 +108,8 @@ class AuthService(
         // Access email, role and plan within transaction to ensure they're loaded
         val userEmail = user.email
         val userRole = user.role.name
+        val isRider = user.isRider
+        val isOperator= user.isOperator
         val userPricingPlan = user.paymentStrategy
         val userFlexDollars = user.flexDollars
 
@@ -117,7 +120,8 @@ class AuthService(
             token = token,
             email = userEmail,
             userId = id,
-            role = userRole,
+            isRider = isRider,
+            isOperator = isOperator,
             pricingPlan = userPricingPlan,
             flexDollars = userFlexDollars
         )

@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import com.example.bikey.ui.UserContext
 import com.example.bikey.ui.PricingPlan
+import kotlin.Boolean
 
 
 data class RegisterUiState(
@@ -37,7 +38,8 @@ data class RegisterUiState(
     val error: String? = null,
     val successEmail: String? = null,
     val successMessage: String? = null,
-    val role: UserRole = UserRole.RIDER,
+    val isRider: Boolean = true,
+    val isOperator: Boolean = false,
 
     // (0=user, 1=address, 2=payment)
     val step: Int = 0,
@@ -82,7 +84,6 @@ private val _events = MutableSharedFlow<RegisterEvent>()
     fun onfirstNameChange(v: String) = set { copy(firstName = v, error = null) }
     fun onlastNameChange(v: String) = set { copy(lastName = v, error = null) }
     fun onUsernameChange(v: String) = set { copy(username = v, error = null) }
-    fun onRoleChange(r: UserRole) = set { copy(role = r, error = null) }
 
     fun onAddrLine1Change(v: String) = set { copy(addrLine1 = v, error = null) }
     fun onAddrLine2Change(v: String) = set { copy(addrLine2 = v, error = null) }
@@ -193,14 +194,14 @@ private val _events = MutableSharedFlow<RegisterEvent>()
 
     fun submit(skipPayment: Boolean = false) {
         Log.d("RegisterVM", "submit() tapped. email='${state.email}', firstname='${state.firstName}'," +
-                "lastname='${state.lastName}', username='${state.username}', role='${state.role}'")
+                "lastname='${state.lastName}', username='${state.username}'")
 
         val email = state.email.trim()
         val pwd = state.password
         val firstname = state.firstName.trim()
         val lastname = state.lastName.trim()
         val username = state.username.trim()
-        val role = state.role
+
 
         // Basic validation
         if (email.isBlank() || !email.contains("@")) {
@@ -267,7 +268,8 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                     firstName = firstname,
                     lastName = lastname,
                     username = username,
-                    role = role,
+                    isRider = true,
+                    isOperator = false,
                     address = address,
                     payment = payment,
                     notificationToken = notificationToken
@@ -285,7 +287,8 @@ private val _events = MutableSharedFlow<RegisterEvent>()
                             firstName = "",
                             lastName = "",
                             username = "",
-                            role = UserRole.RIDER,
+                            isRider = true,
+                            isOperator= false,
                             step = 0,
                             addrLine1 = "",
                             addrLine2 = "",

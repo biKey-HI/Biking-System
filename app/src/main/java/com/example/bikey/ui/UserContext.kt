@@ -2,13 +2,24 @@ package com.example.bikey.ui
 import androidx.navigation.NavHostController
 import java.util.UUID
 
-class User(val id: UUID = UUID.randomUUID(), val email: String, val isOperator: Boolean = false, var pricingPlan: PricingPlan? = if(isOperator) {null} else {PricingPlan.DEFAULT_PAY_NOW}, var hasReservation: Boolean = false, var reservationStationId: String? = null, var flexDollars: Float = 0.0f)
+class User(val id: UUID = UUID.randomUUID(),
+           val email: String,
+           val isRider: Boolean = true,
+           val isOperator: Boolean = false,
+           var pricingPlan: PricingPlan? = if(!isRider) {null} else {PricingPlan.DEFAULT_PAY_NOW},
+           var hasReservation: Boolean = false,
+           var reservationStationId: String? = null,
+           var flexDollars: Float = 0.0f)
 
 class UserContext {
     companion object {
         var user: User? = null
         val id: UUID? get() = user?.id
-        val isOperator: Boolean? get() = user?.isOperator
+
+        val isRider: Boolean get() = user?.isRider ?: true
+
+        val isOperator: Boolean get() = user?.isOperator ?: false
+
         val email: String? get() = user?.email
         val pricingPlan: PricingPlan? get() = user?.pricingPlan
         val hasReservation: Boolean? get() = user?.hasReservation
