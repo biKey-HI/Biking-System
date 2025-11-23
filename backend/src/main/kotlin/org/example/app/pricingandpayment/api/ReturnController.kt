@@ -23,7 +23,7 @@ class ReturnController(
     private val billing: BillingService,
     private val payments: PaymentService,
     private val tripFacade: TripFacade,
-    private val eventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ApplicationEventPublisher,
     private val stations: DockingStationRepository
 ) {
 
@@ -31,7 +31,7 @@ class ReturnController(
     private val logger = LoggerFactory.getLogger(ReturnController::class.java)
 
     // NOTE: Accept IDs as strings from the client, parse explicitly below
-    data class ReturnRequest(val tripId: String, val destStationId: String, val dockId: String?)
+    data class ReturnRequest(val tripId: String, val destStationId: String, val dockId: String?, val distanceTravelled: Int)
     data class ChargeRequest(val tripId: String)
     data class SaveCardRequest(val cardNumber: String, val expMonth: Int, val expYear: Int, val cvc: String)
 
@@ -84,6 +84,7 @@ class ReturnController(
             LoggerFactory.getLogger("UsedFlexDollars").info("Flex Dollars Applied: ${summary.cost.flexDollarCents.toFloat()/100.0}")
 
             rider.flexDollars += (if(receivesFlexDollars) 0.25 else 0.0).toFloat()
+            rider.kilometersTravelled += body.distanceTravelled
             users.save(rider)
 
             LoggerFactory.getLogger("NewFlexDollars").info("Flex Dollars Updated: ${rider.flexDollars}")

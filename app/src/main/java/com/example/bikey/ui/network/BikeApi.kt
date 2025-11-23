@@ -25,7 +25,8 @@ data class TakeBikeResponse(
 data class ReturnBikeRequest(
     val tripId: String,
     val destStationId: String,
-    val dockId: String? = null
+    val dockId: String? = null,
+    val distanceTravelled: Int
 )
 
 @Serializable

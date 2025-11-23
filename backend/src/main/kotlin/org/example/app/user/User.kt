@@ -65,10 +65,13 @@ class User(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "loyalty_tier", nullable = false)
-    var loyaltyTier: LoyaltyTier = LoyaltyTier.NONE
-)
+    var loyaltyTier: LoyaltyTier = LoyaltyTier.NONE,
+
     @Column(nullable = false)
-    var flexDollars: Float = 0.0.toFloat()
+    var flexDollars: Float = 0.0.toFloat(),
+
+    @Column(nullable = false)
+    var kilometersTravelled: Int = 0
 ) {
     fun useFlexDollars(on: Float): Float {
         val used = on.coerceAtMost(flexDollars)

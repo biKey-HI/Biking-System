@@ -33,7 +33,9 @@ data class LoginResponse(
 
     val oldTier: String? = null,
 
-    val newTier: String? = null
+    val newTier: String? = null,
 
-    val flexDollars: Float
+    val flexDollars: Float,
+
+    val kilometersTravelled: Int = 0
 )

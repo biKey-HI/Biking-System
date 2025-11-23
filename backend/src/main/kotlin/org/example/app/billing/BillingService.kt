@@ -35,11 +35,7 @@ class BillingService(
         val bikeOpt: Optional<BicycleEntity>? = bikes.findById(trip.bikeId)
         val bike: BicycleEntity? = bikeOpt?.orElse(null)
 
-        // Fetch user to apply loyalty discount
-        val user = userRepository.findById(trip.riderId).orElse(null)
-
-        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan, user)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0, null, 0)
-        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan, rider)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0, 0)
+        val cost = bike?.let {pricing.price(bike.toDomain(), pricingPlan, rider)} ?: CostBreakdownDTO(0, 0, 0, 0, 0, 0, null, 0, 0)
         return TripSummaryDTO(
             tripId = trip.id,
             riderId = trip.riderId,
