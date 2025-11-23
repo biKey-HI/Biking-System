@@ -61,177 +61,184 @@ class MainActivity : ComponentActivity() {
                     color = androidx.compose.material3.MaterialTheme.colorScheme.background
                 ) {
                     UserContext.nav = rememberNavController()
-                    val nav = UserContext.nav!!
-                    NavHost(
-                        navController = nav,
-                        startDestination = "welcome"
-                    ) {
-                        composable("welcome") {
-                            WelcomeScreen(
-                                onGetStarted = { nav.navigate("register") },
-                                onLogin = { nav.navigate("login") },
-                                onViewPricing = { nav.navigate("pricing") }
-                            )
-                        }
+                    val nav = UserContext.nav
+                    nav?.let {
+                        NavHost(
+                            navController = nav,
+                            startDestination = "welcome"
+                        ) {
+                            composable("welcome") {
+                                WelcomeScreen(
+                                    onGetStarted = { nav.navigate("register") },
+                                    onLogin = { nav.navigate("login") },
+                                    onViewPricing = { nav.navigate("pricing") }
+                                )
+                            }
 
-                        composable("pricing") {
-                            PricingScreen(
-                                onBack = { nav.popBackStack() },
-                                onRegister = { nav.navigate("register") }
-                            )
-                        }
+                            composable("pricing") {
+                                PricingScreen(
+                                    onBack = { nav.popBackStack() },
+                                    onRegister = { nav.navigate("register") }
+                                )
+                            }
 
-                        composable("accountInformation") {
-                            AccountInformationScreen(
-                                onBack = { nav.popBackStack() }
-                            )
-                        }
+                            composable("accountInformation") {
+                                AccountInformationScreen(
+                                    onBack = { nav.popBackStack() }
+                                )
+                            }
 
-                        composable("selectPricing") {
-                            PricingScreen(
-                                onBack = { nav.popBackStack() }
-                            )
-                        }
+                            composable("selectPricing") {
+                                PricingScreen(
+                                    onBack = { nav.popBackStack() }
+                                )
+                            }
 
-                        composable("register") {
-                            RegisterScreen(
-                                onRegistered = { email ->
-                                    // Navigate to loading screen first, then to dashboard
-                                    nav.navigate("loadingToRider/$email") {
-                                        popUpTo("welcome") { inclusive = true }
-                                    }
-                                },
-                                onGoToLogin = {
-                                    nav.navigate("login")
-                                },
-                                onGoBack = {
-                                    nav.navigate("welcome") {
-                                        popUpTo("welcome") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-
-                        composable("login") {
-                            LoginScreen(
-                                onGoToRegister = {
-                                    nav.navigate("register")
-                                },
-                                onGoBack = {
-                                    nav.navigate("welcome") {
-                                        popUpTo("welcome") { inclusive = true }
-                                    }
-                                },
-                                onLoggedIn = { email, role ->
-                                    // Navigate to loading screen first, then to appropriate dashboard
-                                    if (role == "OPERATOR") {
-                                        nav.navigate("loadingToOperator/$email") {
-                                            popUpTo("welcome") { inclusive = true }
-                                        }
-                                    } else {
+                            composable("register") {
+                                RegisterScreen(
+                                    onRegistered = { email ->
+                                        // Navigate to loading screen first, then to dashboard
                                         nav.navigate("loadingToRider/$email") {
                                             popUpTo("welcome") { inclusive = true }
                                         }
+                                    },
+                                    onGoToLogin = {
+                                        nav.navigate("login")
+                                    },
+                                    onGoBack = {
+                                        nav.navigate("welcome") {
+                                            popUpTo("welcome") { inclusive = true }
+                                        }
                                     }
-                                }
-                            )
-                        }
-
-                        // Loading screen for rider dashboard
-                        composable("loadingToRider/{email}") { backStackEntry ->
-                            val email = backStackEntry.arguments?.getString("email") ?: ""
-                            LoadingScreen(
-                                message = "Welcome to BiKey!",
-                                onLoadingComplete = {
-                                    nav.navigate("riderDashboard/$email") {
-                                        popUpTo("loadingToRider/$email") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-
-                        // Loading screen for operator dashboard
-                        composable("loadingToOperator/{email}") { backStackEntry ->
-                            val email = backStackEntry.arguments?.getString("email") ?: ""
-                            LoadingScreen(
-                                message = "Setting up operator dashboard...",
-                                onLoadingComplete = {
-                                    nav.navigate("operatorDashboard/$email") {
-                                        popUpTo("loadingToOperator/$email") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-
-                        composable("riderDashboard/{email}") { backStackEntry ->
-                            val email = backStackEntry.arguments?.getString("email") ?: ""
-                            RiderDashboardScreen(
-                                riderEmail = email,
-                                onLogout = {
-                                    nav.navigate("welcome") {
-                                        popUpTo("welcome") { inclusive = true }
-                                    }
-                                },
-                                onReserveBike = { station ->
-                                    val json = Uri.encode(Json.encodeToString(DockingStationResponse.serializer(), station))
-                                    nav.navigate("reservation/$json")
-                                }
-                            )
-                        }
-                        composable("reservation/{stationJson}") { backStackEntry ->
-                            val stationJson = backStackEntry.arguments?.getString("stationJson")
-                            val station = stationJson?.let {
-                                Json.decodeFromString(DockingStationResponse.serializer(), it)
+                                )
                             }
 
-                            ReservationScreen(
-                                station = station,
-                                riderId = UserContext.id.toString(),
-                                onBack = { nav.popBackStack() }
-                            )
-                        }
-
-
-
-
-                        composable("operatorDashboard/{email}") { backStackEntry ->
-                            val email = backStackEntry.arguments?.getString("email") ?: ""
-                            OperatorDashboardScreen(
-                                operatorEmail = email,
-                                onLogout = {
-                                    nav.navigate("welcome") {
-                                        popUpTo("welcome") { inclusive = true }
+                            composable("login") {
+                                LoginScreen(
+                                    onGoToRegister = {
+                                        nav.navigate("register")
+                                    },
+                                    onGoBack = {
+                                        nav.navigate("welcome") {
+                                            popUpTo("welcome") { inclusive = true }
+                                        }
+                                    },
+                                    onLoggedIn = { email, role ->
+                                        // Navigate to loading screen first, then to appropriate dashboard
+                                        if (role == "OPERATOR") {
+                                            nav.navigate("loadingToOperator/$email") {
+                                                popUpTo("welcome") { inclusive = true }
+                                            }
+                                        } else {
+                                            nav.navigate("loadingToRider/$email") {
+                                                popUpTo("welcome") { inclusive = true }
+                                            }
+                                        }
                                     }
-                                },
-                                onNavigateToMapDashboard = {
-                                    nav.navigate("operatorMapDashboard")
-                                }
-                            )
-                        }
+                                )
+                            }
 
-                        composable("operatorMapDashboard") {
-                            OperatorMapDashboardScreen(
-                                operatorId = UserContext.id.toString(),
-                                onNavigateBack = {
-                                    nav.popBackStack()
-                                }
-                            )
-                        }
+                            // Loading screen for rider dashboard
+                            composable("loadingToRider/{email}") { backStackEntry ->
+                                val email = backStackEntry.arguments?.getString("email") ?: ""
+                                LoadingScreen(
+                                    message = "Welcome to BiKey!",
+                                    onLoadingComplete = {
+                                        nav.navigate("riderDashboard/$email") {
+                                            popUpTo("loadingToRider/$email") { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
 
-                        composable("rideHistory") {
-                            RideHistoryScreen(
-                                onBack = {
-                                    nav.popBackStack()
-                                }
-                            )
-                        }
+                            // Loading screen for operator dashboard
+                            composable("loadingToOperator/{email}") { backStackEntry ->
+                                val email = backStackEntry.arguments?.getString("email") ?: ""
+                                LoadingScreen(
+                                    message = "Setting up operator dashboard...",
+                                    onLoadingComplete = {
+                                        nav.navigate("operatorDashboard/$email") {
+                                            popUpTo("loadingToOperator/$email") { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
 
-                        composable("loyaltyRewards") {
-                            LoyaltyRewardsScreen(
-                                onBack = {
-                                    nav.popBackStack()
+                            composable("riderDashboard/{email}") { backStackEntry ->
+                                val email = backStackEntry.arguments?.getString("email") ?: ""
+                                RiderDashboardScreen(
+                                    riderEmail = email,
+                                    onLogout = {
+                                        nav.navigate("welcome") {
+                                            popUpTo("welcome") { inclusive = true }
+                                        }
+                                    },
+                                    onReserveBike = { station ->
+                                        val json = Uri.encode(
+                                            Json.encodeToString(
+                                                DockingStationResponse.serializer(),
+                                                station
+                                            )
+                                        )
+                                        nav.navigate("reservation/$json")
+                                    }
+                                )
+                            }
+                            composable("reservation/{stationJson}") { backStackEntry ->
+                                val stationJson = backStackEntry.arguments?.getString("stationJson")
+                                val station = stationJson?.let {
+                                    Json.decodeFromString(DockingStationResponse.serializer(), it)
                                 }
-                            )
+
+                                ReservationScreen(
+                                    station = station,
+                                    riderId = UserContext.id.toString(),
+                                    onBack = { nav.popBackStack() }
+                                )
+                            }
+
+
+
+
+                            composable("operatorDashboard/{email}") { backStackEntry ->
+                                val email = backStackEntry.arguments?.getString("email") ?: ""
+                                OperatorDashboardScreen(
+                                    operatorEmail = email,
+                                    onLogout = {
+                                        nav.navigate("welcome") {
+                                            popUpTo("welcome") { inclusive = true }
+                                        }
+                                    },
+                                    onNavigateToMapDashboard = {
+                                        nav.navigate("operatorMapDashboard")
+                                    }
+                                )
+                            }
+
+                            composable("operatorMapDashboard") {
+                                OperatorMapDashboardScreen(
+                                    operatorId = UserContext.id.toString(),
+                                    onNavigateBack = {
+                                        nav.popBackStack()
+                                    }
+                                )
+                            }
+
+                            composable("rideHistory") {
+                                RideHistoryScreen(
+                                    onBack = {
+                                        nav.popBackStack()
+                                    }
+                                )
+                            }
+
+                            composable("loyaltyRewards") {
+                                LoyaltyRewardsScreen(
+                                    onBack = {
+                                        nav.popBackStack()
+                                    }
+                                )
+                            }
                         }
                     }
                 }

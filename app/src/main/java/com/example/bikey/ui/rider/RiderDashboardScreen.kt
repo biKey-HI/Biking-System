@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.CheckCircle
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.platform.LocalContext
 import com.example.bikey.ui.network.TakeBikeRequest
 import androidx.compose.foundation.rememberScrollState
@@ -58,12 +59,15 @@ import androidx.compose.foundation.lazy.items
 import com.example.bikey.ui.network.RideHistoryItemDTO 
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.text.style.TextAlign
+import com.example.bikey.ui.network.directionsApi
 
 
 data class ActiveRideInfo(
     val bikeId: String,
     val tripId: String,
-    val startedAtMs: Long
+    val startedAtMs: Long,
+    val origStationId: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,6 +94,8 @@ fun RiderDashboardScreen(
     var showLoyaltyProgress by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val bikeApi = bikeAPI
+    var lastTripDistance by remember {mutableStateOf<Int?>(null)}
+    var lastReturnStation by remember {mutableStateOf<DockingStationResponse?>(null)}
 
 
     var activeRide by remember { mutableStateOf<ActiveRideInfo?>(null) }
@@ -123,7 +129,8 @@ fun RiderDashboardScreen(
                     activeRide = ActiveRideInfo(
                         bikeId = body.bikeId,
                         tripId = body.tripId,
-                        startedAtMs = body.startedAtEpochMs
+                        startedAtMs = body.startedAtEpochMs,
+                        origStationId = station.id
                     )
                     Toast.makeText(context, "Trip started ", Toast.LENGTH_SHORT).show() // debug
                 } else {
@@ -147,6 +154,14 @@ fun RiderDashboardScreen(
 
         scope.launch {
             try {
+                Log.d("origStationId", activeRide?.origStationId ?: "null")
+                val origStation = stations.find {it.id == activeRide?.origStationId}
+                origStation?.let{
+                    lastTripDistance = getRouteDistance(origStation, station)
+                    Log.d("Distance", if(lastTripDistance == null) "null" else "${lastTripDistance ?: 0}")
+                    UserContext.kilometersTravelled += lastTripDistance ?: 0
+                } ?: return@launch
+
                 val activeTripId = activeRide?.tripId ?: return@launch
                 Log.d("ReturnBike", "Active trip ID: $activeTripId")
                 Log.d("ReturnBike", "Destination station ID: ${station.id}")
@@ -154,7 +169,8 @@ fun RiderDashboardScreen(
                 val returnRequest = com.example.bikey.ui.network.ReturnBikeRequest(
                     tripId = activeTripId,
                     destStationId = station.id,
-                    dockId = null // auto-assign dock
+                    dockId = null, // auto-assign dock
+                    distanceTravelled = lastTripDistance ?: 0
                 )
 
                 Log.d("ReturnBike", "Sending return request...")
@@ -164,17 +180,20 @@ fun RiderDashboardScreen(
                 Log.d("ReturnBike", "Response isSuccessful: ${res.isSuccessful}")
                 if (res.isSuccessful) {
                     val response = res.body()
-                    activeRide = null
 
                     // Show summary to user
 //                    response?.summary?.let { summary ->
 //                        Log.d("TripSummary", "Cost: $${summary.cost.totalCents / 100.0}")
 //                        Toast.makeText(context, "Trip completed! Cost: $${summary.cost.totalCents / 100.0}", Toast.LENGTH_LONG).show()
 //                    }
+                    activeRide = null
+                    lastReturnStation = station
 
                     response?.let {
                         showTripSummary = it
                     }
+
+
 
                     Toast.makeText(context, "Bike returned successfully! Any payments have been processed.", Toast.LENGTH_SHORT).show()
 
@@ -184,7 +203,7 @@ fun RiderDashboardScreen(
                         stations = stationsResponse.body() ?: emptyList()
                         selectedStation = stations.firstOrNull { it.id == selectedStation?.id } ?: selectedStation
                         UserContext.user?.flexDollars -= (showTripSummary?.summary?.cost?.flexDollarCents ?: 0).toFloat()/100f
-                        UserContext.user?.flexDollars += if(selectedStation!!.numOccupiedDocks.toFloat()/(selectedStation!!.numOccupiedDocks + selectedStation!!.numFreeDocks).toFloat() < 0.25f) 0.25f else 0f
+                        UserContext.user?.flexDollars += if((lastReturnStation!!.numOccupiedDocks.toFloat())/(lastReturnStation!!.numOccupiedDocks + lastReturnStation!!.numFreeDocks).toFloat() < 0.25f) 0.25f else 0f
                     }
                 } else {
                     val errorBody = res.errorBody()?.string()
@@ -233,13 +252,14 @@ fun RiderDashboardScreen(
         position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
 
-    if (showTripSummary != null) {
+    if (showTripSummary != null && lastReturnStation != null) {
             TripSummaryScreen(
                 summary = showTripSummary!!,
-                offersFlexDollars = selectedStation?.let{ selectedStation!!.numOccupiedDocks.toFloat()/(selectedStation!!.numOccupiedDocks + selectedStation!!.numFreeDocks).toFloat() < 0.25f} ?: false,
+                offersFlexDollars = lastReturnStation?.let{(lastReturnStation!!.numOccupiedDocks.toFloat())/(lastReturnStation!!.numOccupiedDocks + lastReturnStation!!.numFreeDocks).toFloat() < 0.25f} ?: false,
                 onDone = {
                     showTripSummary = null
-                }
+                },
+                distanceTravelled = lastTripDistance ?: 0
             )
     } else {
         Box(
@@ -466,12 +486,20 @@ fun RiderDashboardScreen(
                         onLogout = {
                             showMenu = false
                             onLogout()
-                        }
+                        },
+                        
                     )
                 }
             }
         }
     }
+}
+
+suspend fun getRouteDistance(origin: DockingStationResponse, destination: DockingStationResponse): Int {
+    val origin = "${origin.location.latitude},${origin.location.longitude}"
+    val destination = "${destination.location.latitude},${destination.location.longitude}"
+    val res = directionsApi.getDistance(origin, destination)
+    return (res.routes.firstOrNull()?.legs?.firstOrNull()?.distance?.value ?: 0)/1000
 }
 
 @Composable
@@ -969,7 +997,27 @@ fun HamburgerMenu(
                                 }
                             }
                         }
+                        Text(
+                            text = "Distance Travelled: ${UserContext.kilometersTravelled} km",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PureWhite.copy(alpha = 0.9f),
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Text(
+                            text = "CO2 Emissions Avoided: ${(UserContext.kilometersTravelled*0.25).toInt()} kg",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PureWhite.copy(alpha = 0.9f),
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Text(
+                            text = "Flex Dollars: $${"%.2f".format(UserContext.flexDollars)}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PureWhite.copy(alpha = 0.9f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                     }
+
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1026,19 +1074,6 @@ fun HamburgerMenu(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
-            // Menu Items
-            MenuItemButton(
-                icon = Icons.Default.Person,
-                text = "Edit Profile",
-                onClick = { UserContext.nav?.navigate("accountInformation") }
-            )
-
-                // Menu Items
-                MenuItemButton(
-                    icon = Icons.Default.Person,
-                    text = "Edit Profile",
-                    onClick = { /* TODO */ }
-                )
 
                 MenuItemButton(
                     icon = Icons.Filled.CheckCircle,
@@ -1407,7 +1442,8 @@ fun StationSearchItem(
 fun TripSummaryScreen(
     summary: ReturnAndSummaryResponse,
     onDone: () -> Unit,
-    offersFlexDollars: Boolean = false
+    offersFlexDollars: Boolean = false,
+    distanceTravelled: Int
 ) {
     Column(
         modifier = Modifier
@@ -1448,7 +1484,9 @@ fun TripSummaryScreen(
             ) {
                 TripDetailItem("Start", summary.summary.startStationName)
                 TripDetailItem("End", summary.summary.endStationName)
-                TripDetailItem("Duration", "${summary.summary.durationMinutes} minutes")
+                TripDetailItem("Duration", "${summary.summary.durationMinutes} min")
+                TripDetailItem("Distance", "$distanceTravelled km")
+                TripDetailItem("Carbon Emissions Avoided", "${distanceTravelled.times(0.25)} kg")
                 TripDetailItem("Bike Type", if (summary.summary.isEBike) "E-Bike" else "Classic Bike")
             }
         }
@@ -1465,6 +1503,7 @@ fun TripSummaryScreen(
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
+
                 Text(
                     text = "Cost Breakdown",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),

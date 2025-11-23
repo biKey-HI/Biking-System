@@ -135,11 +135,6 @@ class AuthService(
 
             val token = TokenUtil.issueFakeToken(id, user.email)
 
-            // Access email, role and plan within transaction to ensure they're loaded
-            val userEmail = user.email
-            val userRole = user.role.name
-            val userPricingPlan = user.paymentStrategy
-
             user.notificationToken = if(req.notificationToken == "") {null} else {req.notificationToken}
             userRepository.save(user)
 
@@ -149,6 +144,8 @@ class AuthService(
                 userId = id,
                 role = userRole,
                 pricingPlan = userPricingPlan,
+                flexDollars = userFlexDollars,
+                kilometersTravelled = user.kilometersTravelled,
                 loyaltyTier = user.loyaltyTier.name,
                 loyaltyTierDisplayName = user.loyaltyTier.displayName,
                 tierChanged = tierChanged,
@@ -162,14 +159,6 @@ class AuthService(
             e.printStackTrace()
             throw e
         }
-        return LoginResponse(
-            token = token,
-            email = userEmail,
-            userId = id,
-            role = userRole,
-            pricingPlan = userPricingPlan,
-            flexDollars = userFlexDollars
-        )
     }
 }
 
