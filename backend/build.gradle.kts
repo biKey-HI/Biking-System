@@ -42,6 +42,10 @@ dependencies {
 
     // Firebase
     implementation("com.google.firebase:firebase-admin:9.2.0")
+
+    // Testing
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("io.mockk:mockk:1.13.7")
 }
 
 tasks.test { useJUnitPlatform() }
