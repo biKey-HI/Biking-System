@@ -32,7 +32,7 @@ class DatabaseInitializer(
         )
         createDualOperatorIfNotExists(
             email = "dual@bikey.com",
-            password = "dual123",
+            password = "dual1234",
             firstName = "Dual",
             lastName = "User",
             username = "dual1"

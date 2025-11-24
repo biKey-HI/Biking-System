@@ -57,6 +57,7 @@ import androidx.compose.foundation.lazy.items
 import com.example.bikey.ui.network.RideHistoryItemDTO 
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import com.example.bikey.ui.ViewMode
 
 
 data class ActiveRideInfo(
@@ -937,6 +938,20 @@ fun HamburgerMenu(
             Spacer(modifier = Modifier.weight(1f))
 
             HorizontalDivider()
+
+            if (UserContext.isOperator && UserContext.isRider) {
+                MenuItemButton(
+                    icon = Icons.Default.SwapHoriz,
+                    text = "Switch to Operator View",
+                    onClick = {
+                        UserContext.viewMode = ViewMode.OPERATOR
+                        UserContext.nav?.navigate("loadingToOperator/${UserContext.email}") {
+                            popUpTo("riderDashboard/${UserContext.email}") { inclusive = true }
+                        }
+                    }
+
+                )
+            }
 
             MenuItemButton(
                 icon = Icons.AutoMirrored.Filled.ExitToApp,

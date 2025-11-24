@@ -11,6 +11,8 @@ class User(val id: UUID = UUID.randomUUID(),
            var reservationStationId: String? = null,
            var flexDollars: Float = 0.0f)
 
+enum class ViewMode { RIDER, OPERATOR }
+
 class UserContext {
     companion object {
         var user: User? = null
@@ -27,6 +29,23 @@ class UserContext {
         val flexDollars: Float get() = user?.flexDollars ?: 0.0f
         var notificationToken: String? = null
         var nav: NavHostController? = null
+        var viewMode: ViewMode = ViewMode.RIDER
+
+        fun toggleViewMode() {
+            user?.let {
+                if (it.isRider && it.isOperator) {
+                    viewMode = if (viewMode == ViewMode.RIDER) {
+                        ViewMode.OPERATOR
+                    } else {
+                        ViewMode.RIDER
+                    }
+                }
+            }
+        }
+
+
+
+
     }
 }
 
