@@ -30,7 +30,8 @@ dependencies {
     implementation("org.springframework.security:spring-security-crypto:6.3.2")
 
     implementation("org.apache.commons:commons-compress:1.26.2")
-
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
+    testImplementation(kotlin("test-junit5"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     // Timers
