@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.text.style.TextAlign
 import com.example.bikey.ui.network.directionsApi
+import com.example.bikey.ui.ViewMode
 
 
 data class ActiveRideInfo(
