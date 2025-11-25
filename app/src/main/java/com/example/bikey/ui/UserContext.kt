@@ -11,7 +11,8 @@ class User(val id: UUID = UUID.randomUUID(),
            var pricingPlan: PricingPlan? = if(!isRider) {null} else {PricingPlan.DEFAULT_PAY_NOW},
            var hasReservation: Boolean = false,
            var reservationStationId: String? = null,
-           var flexDollars: Float = 0.0f)
+           var flexDollars: Float = 0.0f,
+           var kilometersTravelled: Int = 0)
 
 enum class ViewMode { RIDER, OPERATOR }
 
