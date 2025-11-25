@@ -8,6 +8,7 @@ import org.hibernate.type.SqlTypes
 import java.awt.geom.Line2D
 import java.time.Instant
 import java.util.UUID
+import org.example.app.loyalty.LoyaltyTier
 import kotlin.math.max
 
 @Entity
@@ -64,8 +65,15 @@ class User(
     @Column(nullable = false)
     var hasActiveSubscription: Boolean = false,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "loyalty_tier", nullable = false)
+    var loyaltyTier: LoyaltyTier = LoyaltyTier.NONE,
+
     @Column(nullable = false)
     var flexDollars: Float = 0.0.toFloat(),
+
+    @Column(nullable = false)
+    var kilometersTravelled: Int = 0,
 
     //Dual role switching
     @Column(nullable = false)

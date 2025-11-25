@@ -25,7 +25,8 @@ data class TakeBikeResponse(
 data class ReturnBikeRequest(
     val tripId: String,
     val destStationId: String,
-    val dockId: String? = null
+    val dockId: String? = null,
+    val distanceTravelled: Int
 )
 
 @Serializable
@@ -35,6 +36,8 @@ data class CostBreakdownDTO(
     val minutes: Int,
     val eBikeSurchargeCents: Int? = null,
     val overtimeCents: Int? = null,
+    val discountCents: Int = 0,
+    val loyaltyTier: String? = null,
     val flexDollarCents: Int = 0,
     val totalCents: Int
 )
@@ -110,6 +113,56 @@ data class ToggleBikeMaintenanceRequest(
     val bikeId: String
 )
 
+// Loyalty Program DTOs
+@Serializable
+data class LoyaltyTierResponse(
+    val userId: String,
+    val tier: String,
+    val tierDisplayName: String,
+    val discountPercentage: Float,
+    val totalRides: Int,
+    val reservationHoldExtraMinutes: Int
+)
+
+@Serializable
+data class BronzeEligibilityResponse(
+    val userId: String,
+    val isEligible: Boolean,
+    val message: String
+)
+
+@Serializable
+data class AllTierEligibilityResponse(
+    val userId: String,
+    val bronzeEligible: Boolean,
+    val silverEligible: Boolean,
+    val goldEligible: Boolean
+)
+
+@Serializable
+data class TierUpdateResponse(
+    val userId: String,
+    val oldTier: String,
+    val newTier: String,
+    val tierChanged: Boolean,
+    val upgraded: Boolean,
+    val downgraded: Boolean,
+    val currentTierInfo: LoyaltyTierResponse
+)
+
+@Serializable
+data class LoyaltyProgressDTO(
+    val currentTier: String,
+    val currentTierDisplayName: String,
+    val currentDiscount: Int,
+    val nextTier: String?,
+    val nextTierDisplayName: String?,
+    val nextTierDiscount: Int?,
+    val requirementsForNext: Map<String, String>,
+    val currentProgress: Map<String, String>,
+    val totalCompletedTrips: Int
+)
+
 interface BikeAPI {
     @POST("api/take-bike")
     suspend fun takeBike(@Body body: TakeBikeRequest): Response<TakeBikeResponse>
@@ -130,6 +183,18 @@ interface BikeAPI {
 
     @POST("api/maintenance-bike")
     suspend fun toggleBikeMaintenance(@Body body: ToggleBikeMaintenanceRequest): Response<Unit?>
+
+    @retrofit2.http.GET("api/loyalty/tier/{userId}")
+    suspend fun getLoyaltyTier(@retrofit2.http.Path("userId") userId: String): Response<LoyaltyTierResponse>
+
+    @retrofit2.http.GET("api/loyalty/check-bronze-eligibility/{userId}")
+    suspend fun checkBronzeEligibility(@retrofit2.http.Path("userId") userId: String): Response<BronzeEligibilityResponse>
+
+    @POST("api/loyalty/update-tier/{userId}")
+    suspend fun updateLoyaltyTier(@retrofit2.http.Path("userId") userId: String): Response<LoyaltyTierResponse>
+
+    @retrofit2.http.GET("api/loyalty/progress/{userId}")
+    suspend fun getLoyaltyProgress(@retrofit2.http.Path("userId") userId: String): Response<LoyaltyProgressDTO>
 }
 
 

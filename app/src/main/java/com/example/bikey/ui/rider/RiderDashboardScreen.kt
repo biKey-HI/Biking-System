@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.bikey.ui.network.mapAPI
+import com.example.bikey.ui.network.bikeAPI
+import com.example.bikey.ui.network.LoyaltyTierResponse
 import com.example.bikey.ui.operator.model.DockingStationResponse
 import com.example.bikey.ui.theme.*
 import com.google.android.gms.maps.model.CameraPosition
@@ -36,8 +38,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.CheckCircle
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.platform.LocalContext
-import com.example.bikey.ui.network.bikeAPI
 import com.example.bikey.ui.network.TakeBikeRequest
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -58,12 +60,15 @@ import com.example.bikey.ui.network.RideHistoryItemDTO
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import com.example.bikey.ui.ViewMode
+import androidx.compose.ui.text.style.TextAlign
+import com.example.bikey.ui.network.directionsApi
 
 
 data class ActiveRideInfo(
     val bikeId: String,
     val tripId: String,
-    val startedAtMs: Long
+    val startedAtMs: Long,
+    val origStationId: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,8 +92,11 @@ fun RiderDashboardScreen(
     var selectedFilter by remember { mutableStateOf(BikeFilter.ALL) }
     var showSearchDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var showLoyaltyProgress by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val bikeApi = bikeAPI
+    var lastTripDistance by remember {mutableStateOf<Int?>(null)}
+    var lastReturnStation by remember {mutableStateOf<DockingStationResponse?>(null)}
 
 
     var activeRide by remember { mutableStateOf<ActiveRideInfo?>(null) }
@@ -122,7 +130,8 @@ fun RiderDashboardScreen(
                     activeRide = ActiveRideInfo(
                         bikeId = body.bikeId,
                         tripId = body.tripId,
-                        startedAtMs = body.startedAtEpochMs
+                        startedAtMs = body.startedAtEpochMs,
+                        origStationId = station.id
                     )
                     Toast.makeText(context, "Trip started ", Toast.LENGTH_SHORT).show() // debug
                 } else {
@@ -146,6 +155,14 @@ fun RiderDashboardScreen(
 
         scope.launch {
             try {
+                Log.d("origStationId", activeRide?.origStationId ?: "null")
+                val origStation = stations.find {it.id == activeRide?.origStationId}
+                origStation?.let{
+                    lastTripDistance = getRouteDistance(origStation, station)
+                    Log.d("Distance", if(lastTripDistance == null) "null" else "${lastTripDistance ?: 0}")
+                    UserContext.kilometersTravelled += lastTripDistance ?: 0
+                } ?: return@launch
+
                 val activeTripId = activeRide?.tripId ?: return@launch
                 Log.d("ReturnBike", "Active trip ID: $activeTripId")
                 Log.d("ReturnBike", "Destination station ID: ${station.id}")
@@ -153,7 +170,8 @@ fun RiderDashboardScreen(
                 val returnRequest = com.example.bikey.ui.network.ReturnBikeRequest(
                     tripId = activeTripId,
                     destStationId = station.id,
-                    dockId = null // auto-assign dock
+                    dockId = null, // auto-assign dock
+                    distanceTravelled = lastTripDistance ?: 0
                 )
 
                 Log.d("ReturnBike", "Sending return request...")
@@ -163,17 +181,20 @@ fun RiderDashboardScreen(
                 Log.d("ReturnBike", "Response isSuccessful: ${res.isSuccessful}")
                 if (res.isSuccessful) {
                     val response = res.body()
-                    activeRide = null
 
                     // Show summary to user
 //                    response?.summary?.let { summary ->
 //                        Log.d("TripSummary", "Cost: $${summary.cost.totalCents / 100.0}")
 //                        Toast.makeText(context, "Trip completed! Cost: $${summary.cost.totalCents / 100.0}", Toast.LENGTH_LONG).show()
 //                    }
+                    activeRide = null
+                    lastReturnStation = station
 
                     response?.let {
                         showTripSummary = it
                     }
+
+
 
                     Toast.makeText(context, "Bike returned successfully! Any payments have been processed.", Toast.LENGTH_SHORT).show()
 
@@ -183,7 +204,7 @@ fun RiderDashboardScreen(
                         stations = stationsResponse.body() ?: emptyList()
                         selectedStation = stations.firstOrNull { it.id == selectedStation?.id } ?: selectedStation
                         UserContext.user?.flexDollars -= (showTripSummary?.summary?.cost?.flexDollarCents ?: 0).toFloat()/100f
-                        UserContext.user?.flexDollars += if(selectedStation!!.numOccupiedDocks.toFloat()/(selectedStation!!.numOccupiedDocks + selectedStation!!.numFreeDocks).toFloat() < 0.25f) 0.25f else 0f
+                        UserContext.user?.flexDollars += if((lastReturnStation!!.numOccupiedDocks.toFloat())/(lastReturnStation!!.numOccupiedDocks + lastReturnStation!!.numFreeDocks).toFloat() < 0.25f) 0.25f else 0f
                     }
                 } else {
                     val errorBody = res.errorBody()?.string()
@@ -232,13 +253,14 @@ fun RiderDashboardScreen(
         position = CameraPosition.fromLatLngZoom(LatLng(45.5017, -73.5673), 13f)
     }
 
-    if (showTripSummary != null) {
+    if (showTripSummary != null && lastReturnStation != null) {
             TripSummaryScreen(
                 summary = showTripSummary!!,
-                offersFlexDollars = selectedStation?.let{ selectedStation!!.numOccupiedDocks.toFloat()/(selectedStation!!.numOccupiedDocks + selectedStation!!.numFreeDocks).toFloat() < 0.25f} ?: false,
+                offersFlexDollars = lastReturnStation?.let{(lastReturnStation!!.numOccupiedDocks.toFloat())/(lastReturnStation!!.numOccupiedDocks + lastReturnStation!!.numFreeDocks).toFloat() < 0.25f} ?: false,
                 onDone = {
                     showTripSummary = null
-                }
+                },
+                distanceTravelled = lastTripDistance ?: 0
             )
     } else {
         Box(
@@ -465,12 +487,20 @@ fun RiderDashboardScreen(
                         onLogout = {
                             showMenu = false
                             onLogout()
-                        }
+                        },
+                        
                     )
                 }
             }
         }
     }
+}
+
+suspend fun getRouteDistance(origin: DockingStationResponse, destination: DockingStationResponse): Int {
+    val origin = "${origin.location.latitude},${origin.location.longitude}"
+    val destination = "${destination.location.latitude},${destination.location.longitude}"
+    val res = directionsApi.getDistance(origin, destination)
+    return (res.routes.firstOrNull()?.legs?.firstOrNull()?.distance?.value ?: 0)/1000
 }
 
 @Composable
@@ -822,6 +852,36 @@ fun HamburgerMenu(
     onDismiss: () -> Unit,
     onLogout: () -> Unit
 ) {
+    var loyaltyTier by remember { mutableStateOf<LoyaltyTierResponse?>(null) }
+    var isLoadingLoyalty by remember { mutableStateOf(true) }
+    var showLoyaltyProgress by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val userId = UserContext.user?.id.toString()
+
+    // Fetch loyalty tier when menu opens
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                val response = bikeAPI.getLoyaltyTier(userId)
+                if (response.isSuccessful) {
+                    loyaltyTier = response.body()
+                }
+            } catch (e: Exception) {
+                // Handle error silently
+            } finally {
+                isLoadingLoyalty = false
+            }
+        }
+    }
+
+    // Show loyalty progress dialog
+    if (showLoyaltyProgress) {
+        LoyaltyProgressDialog(
+            userId = userId,
+            onDismiss = { showLoyaltyProgress = false }
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
 
         Box(
@@ -839,128 +899,251 @@ fun HamburgerMenu(
                 .fillMaxHeight()
                 .align(Alignment.CenterStart)
         ) {
-            // Header
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(EcoGreen)
-                    .padding(24.dp)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
             ) {
-                Column {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        tint = PureWhite,
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = username,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = PureWhite
+                // Header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(EcoGreen)
+                        .padding(24.dp)
+                ) {
+                    Column {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = PureWhite,
+                            modifier = Modifier.size(64.dp)
                         )
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Rider Account",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = PureWhite.copy(alpha = 0.8f)
+                            text = username,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = PureWhite
+                            )
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Rider Account",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = PureWhite.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = PureWhite.copy(alpha = 0.6f)
+                            )
+                            Text(
+                                text = UserContext.pricingPlan?.displayName ?: "No Plan",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = PureWhite.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        // Loyalty Tier Badge
+                        if (!isLoadingLoyalty && loyaltyTier != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            val tierColor = when (loyaltyTier?.tier) {
+                                "BRONZE" -> Color(0xFFCD7F32)
+                                "SILVER" -> Color(0xFFC0C0C0)
+                                "GOLD" -> Color(0xFFFFD700)
+                                else -> Color.Gray.copy(alpha = 0.3f)
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = tierColor,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = PureWhite,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = loyaltyTier?.tierDisplayName ?: "No Tier",
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = PureWhite
+                                            )
+                                        )
+                                        if ((loyaltyTier?.discountPercentage ?: 0f) > 0) {
+                                            Text(
+                                                text = "${(loyaltyTier!!.discountPercentage * 100).toInt()}% Discount",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = PureWhite.copy(alpha = 0.9f)
+                                            )
+                                        }
+                                        if ((loyaltyTier?.reservationHoldExtraMinutes ?: 0) > 0) {
+                                            Text(
+                                                text = "+${loyaltyTier!!.reservationHoldExtraMinutes} min hold time",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = PureWhite.copy(alpha = 0.9f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Text(
+                            text = "Distance Travelled: ${UserContext.kilometersTravelled} km",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PureWhite.copy(alpha = 0.9f),
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                         Text(
-                            text = "•",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = PureWhite.copy(alpha = 0.6f)
+                            text = "CO2 Emissions Avoided: ${(UserContext.kilometersTravelled*0.25).toInt()} kg",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PureWhite.copy(alpha = 0.9f),
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                         Text(
-                            text = UserContext.pricingPlan?.displayName ?: "No Plan",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = PureWhite.copy(alpha = 0.8f)
+                            text = "Flex Dollars: $${"%.2f".format(UserContext.flexDollars)}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PureWhite.copy(alpha = 0.9f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
+
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Menu Items
-            MenuItemButton(
-                icon = Icons.Default.Person,
-                text = "Edit Profile",
-                onClick = { UserContext.nav?.navigate("accountInformation") }
-            )
+                // Loyalty Rewards Section (if Bronze tier)
+                if (loyaltyTier?.tier == "BRONZE") {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF8E1)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFFCD7F32),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "Bronze Benefits",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF6D4C41)
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "✓ 5% discount on all trips",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF6D4C41)
+                            )
+                            Text(
+                                text = "✓ Loyal rider recognition",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF6D4C41)
+                            )
+                            Text(
+                                text = "✓ Priority support",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF6D4C41)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
-            MenuItemButton(
-                icon = Icons.Filled.CheckCircle,
-                text = "Pricing Plans",
-                onClick = { UserContext.nav?.navigate("selectPricing")}
-            )
+                MenuItemButton(
+                    icon = Icons.Filled.CheckCircle,
+                    text = "Pricing Plans",
+                    onClick = { UserContext.nav?.navigate("selectPricing")}
+                )
 
-            MenuItemButton(
-                icon = Icons.Default.AccountBox,
-                text = "Payment Methods",
-                onClick = { /* TODO */ }
-            )
+                // Add Loyalty Rewards menu item
+                MenuItemButton(
+                    icon = Icons.Default.Star,
+                    text = "Loyalty Progress",
+                    onClick = {
+                        showLoyaltyProgress = true
+                    },
+                    badge = if (loyaltyTier?.tier == "BRONZE" || loyaltyTier?.tier == "SILVER" || loyaltyTier?.tier == "GOLD") loyaltyTier?.tier else null
+                )
 
-            MenuItemButton(
-                icon = Icons.Default.DateRange,
-                text = "Ride History",
-                onClick = { UserContext.nav?.navigate("rideHistory") }
-            )
+                MenuItemButton(
+                    icon = Icons.Default.AccountBox,
+                    text = "Payment Methods",
+                    onClick = { /* TODO */ }
+                )
 
-            MenuItemButton(
-                icon = Icons.Default.Favorite,
-                text = "Saved Stations",
-                onClick = { /* TODO */ }
-            )
+                MenuItemButton(
+                    icon = Icons.Default.DateRange,
+                    text = "Ride History",
+                    onClick = {
+                        onDismiss()
+                        UserContext.nav?.navigate("rideHistory")
+                    }
+                )
 
-            MenuItemButton(
-                icon = Icons.Default.Notifications,
-                text = "Notifications",
-                onClick = { /* TODO */ }
-            )
+                MenuItemButton(
+                    icon = Icons.Default.Favorite,
+                    text = "Saved Stations",
+                    onClick = { /* TODO */ }
+                )
 
-            MenuItemButton(
-                icon = Icons.Default.Settings,
-                text = "Settings",
-                onClick = { /* TODO */ }
-            )
+                MenuItemButton(
+                    icon = Icons.Default.Notifications,
+                    text = "Notifications",
+                    onClick = { /* TODO */ }
+                )
 
-            MenuItemButton(
-                icon = Icons.Default.Info,
-                text = "Help & Support",
-                onClick = { /* TODO */ }
-            )
+                MenuItemButton(
+                    icon = Icons.Default.Settings,
+                    text = "Settings",
+                    onClick = { /* TODO */ }
+                )
 
-            Spacer(modifier = Modifier.weight(1f))
+                MenuItemButton(
+                    icon = Icons.Default.Info,
+                    text = "Help & Support",
+                    onClick = { /* TODO */ }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
 
             HorizontalDivider()
 
-            if (UserContext.isOperator && UserContext.isRider) {
                 MenuItemButton(
-                    icon = Icons.Default.SwapHoriz,
-                    text = "Switch to Operator View",
-                    onClick = {
-                        UserContext.viewMode = ViewMode.OPERATOR
-                        UserContext.nav?.navigate("loadingToOperator/${UserContext.email}") {
-                            popUpTo("riderDashboard/${UserContext.email}") { inclusive = true }
-                        }
-                    }
-
+                    icon = Icons.AutoMirrored.Filled.ExitToApp,
+                    text = "Logout",
+                    onClick = onLogout,
+                    textColor = MaterialTheme.colorScheme.error
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            MenuItemButton(
-                icon = Icons.AutoMirrored.Filled.ExitToApp,
-                text = "Logout",
-                onClick = onLogout,
-                textColor = MaterialTheme.colorScheme.error
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -970,7 +1153,8 @@ fun MenuItemButton(
     icon: ImageVector,
     text: String,
     onClick: () -> Unit,
-    textColor: Color = DarkGreen
+    textColor: Color = DarkGreen,
+    badge: String? = null
 ) {
     Surface(
         onClick = onClick,
@@ -996,6 +1180,26 @@ fun MenuItemButton(
                     color = textColor
                 )
             )
+
+            // Badge display
+            if (badge != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFCD7F32),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                ) {
+                    Text(
+                        text = badge,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = PureWhite
+                        ),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.weight(1f))
             Icon(
                 imageVector = Icons.Default.KeyboardArrowRight,
@@ -1239,7 +1443,8 @@ fun StationSearchItem(
 fun TripSummaryScreen(
     summary: ReturnAndSummaryResponse,
     onDone: () -> Unit,
-    offersFlexDollars: Boolean = false
+    offersFlexDollars: Boolean = false,
+    distanceTravelled: Int
 ) {
     Column(
         modifier = Modifier
@@ -1280,7 +1485,9 @@ fun TripSummaryScreen(
             ) {
                 TripDetailItem("Start", summary.summary.startStationName)
                 TripDetailItem("End", summary.summary.endStationName)
-                TripDetailItem("Duration", "${summary.summary.durationMinutes} minutes")
+                TripDetailItem("Duration", "${summary.summary.durationMinutes} min")
+                TripDetailItem("Distance", "$distanceTravelled km")
+                TripDetailItem("Carbon Emissions Avoided", "${distanceTravelled.times(0.25)} kg")
                 TripDetailItem("Bike Type", if (summary.summary.isEBike) "E-Bike" else "Classic Bike")
             }
         }
@@ -1297,6 +1504,7 @@ fun TripSummaryScreen(
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
+
                 Text(
                     text = "Cost Breakdown",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -1307,6 +1515,12 @@ fun TripSummaryScreen(
                     if(UserContext.pricingPlan == PricingPlan.DEFAULT_PAY_NOW) {CostItem("Base fare", baseCents)}
                     eBikeSurchargeCents?.let { CostItem("Electricity rate ($minutes mins)", it) }
                     overtimeCents?.let { if(overtimeCents != 0) CostItem("Overtime charges", it) }
+
+                    // Show loyalty discount if applicable
+                    if (discountCents > 0) {
+                        CostItem("Loyalty Discount ($loyaltyTier)", -discountCents, isDiscount = true)
+                    }
+
                     if(flexDollarCents > 0) CostItem("Flex Dollars Used", -1*flexDollarCents)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
                     CostItem("Total", totalCents)
@@ -1357,7 +1571,7 @@ private fun TripDetailItem(label: String, value: String) {
 }
 
 @Composable
-private fun CostItem(label: String, cents: Int, isTotal: Boolean = false) {
+private fun CostItem(label: String, cents: Int, isTotal: Boolean = false, isDiscount: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1369,14 +1583,14 @@ private fun CostItem(label: String, cents: Int, isTotal: Boolean = false) {
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
             ),
-            color = if (isTotal) DarkGreen else Color.Gray
+            color = if (isTotal) DarkGreen else if (isDiscount) Color.Red else Color.Gray
         )
         Text(
             text = "$${cents / 100.0}",
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
             ),
-            color = if (isTotal) DarkGreen else Color.Gray
+            color = if (isTotal) DarkGreen else if (isDiscount) Color.Red else Color.Gray
         )
     }
 }
@@ -1717,6 +1931,11 @@ fun RideHistoryItem(ride: RideHistoryItemDTO) {
                     eBikeSurchargeCents?.let { if (it > 0) CostItem("E-Bike Surcharge", it) }
                     overtimeCents?.let { if (it > 0) CostItem("Overtime charges", it) }
 
+                    // Show loyalty discount if applicable
+                    if (discountCents > 0) {
+                        CostItem("Loyalty Discount ($loyaltyTier)", -discountCents, isDiscount = true)
+                    }
+
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
                     // Show plan name if subscription and cost is $0, otherwise show cost
                     if (isSubscription && totalCents == 0) {
@@ -1767,3 +1986,327 @@ fun RideHistoryItem(ride: RideHistoryItemDTO) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoyaltyRewardsScreen(
+    onBack: () -> Unit
+) {
+    var loyaltyTier by remember { mutableStateOf<LoyaltyTierResponse?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // Fetch loyalty tier data
+    LaunchedEffect(Unit) {
+        try {
+            val response = bikeAPI.getLoyaltyTier(UserContext.id.toString())
+            if (response.isSuccessful) {
+                loyaltyTier = response.body()
+            } else {
+                errorMessage = "Failed to load loyalty data"
+            }
+        } catch (e: Exception) {
+            errorMessage = "Error: ${e.message}"
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Loyalty Rewards", color = Color.White) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = EcoGreen
+                )
+            )
+        }
+    ) { padding ->
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = EcoGreen)
+            }
+        } else if (errorMessage != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = errorMessage!!,
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                // Current Tier Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = PureWhite),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val tierColor = when (loyaltyTier?.tier) {
+                            "BRONZE" -> Color(0xFFCD7F32)
+                            "SILVER" -> Color(0xFFC0C0C0)
+                            "GOLD" -> Color(0xFFFFD700)
+                            else -> Color.Gray
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = tierColor,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = loyaltyTier?.tierDisplayName ?: "No Tier",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreen
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if ((loyaltyTier?.discountPercentage ?: 0f) > 0) {
+                            Text(
+                                text = "🎉 ${(loyaltyTier!!.discountPercentage * 100).toInt()}% Discount on All Rides!",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = EcoGreen
+                                )
+                            )
+                        }
+                        if ((loyaltyTier?.reservationHoldExtraMinutes ?: 0) > 0) {
+                            Text(
+                                text = "⏰ +${loyaltyTier!!.reservationHoldExtraMinutes} minutes reservation hold",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = EcoGreen
+                                )
+                            )
+                        }
+                        if ((loyaltyTier?.discountPercentage ?: 0f) == 0f) {
+                            Text(
+                                text = "Complete rides to unlock rewards",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Tier Benefits
+                Text(
+                    text = "Loyalty Tiers",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = DarkGreen
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Bronze Tier
+                TierCard(
+                    tierName = "Bronze Tier",
+                    tierColor = Color(0xFFCD7F32),
+                    discount = "5% off",
+                    requirement = "• 10 trips in last year\n• No missed reservations\n• All bikes returned",
+                    isUnlocked = loyaltyTier?.tier == "BRONZE" || loyaltyTier?.tier == "SILVER" || loyaltyTier?.tier == "GOLD"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Silver Tier
+                TierCard(
+                    tierName = "Silver Tier",
+                    tierColor = Color(0xFFC0C0C0),
+                    discount = "10% off + 2 min hold",
+                    requirement = "• Bronze eligibility\n• 5 trips/month for 3 months\n• 5+ completed trips last year",
+                    isUnlocked = loyaltyTier?.tier == "SILVER" || loyaltyTier?.tier == "GOLD"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Gold Tier
+                TierCard(
+                    tierName = "Gold Tier",
+                    tierColor = Color(0xFFFFD700),
+                    discount = "15% off + 5 min hold",
+                    requirement = "• Silver eligibility\n• 5 trips/week for 12 weeks",
+                    isUnlocked = loyaltyTier?.tier == "GOLD"
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Progress Section
+                Text(
+                    text = "Your Progress",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = DarkGreen
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = PureWhite),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Total Rides Completed",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                            Text(
+                                text = "${loyaltyTier?.totalRides ?: 0}",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = EcoGreen
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Progress bar
+                        val progress = ((loyaltyTier?.totalRides ?: 0) / 10f).coerceIn(0f, 1f)
+                        Column {
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(6.dp)),
+                                color = EcoGreen,
+                                trackColor = Color.LightGray.copy(alpha = 0.3f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (loyaltyTier?.tier == "BRONZE") {
+                                    "🎉 Bronze tier unlocked!"
+                                } else {
+                                    "${10 - (loyaltyTier?.totalRides ?: 0)} more rides to Bronze tier"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TierCard(
+    tierName: String,
+    tierColor: Color,
+    discount: String,
+    requirement: String,
+    isUnlocked: Boolean,
+    isComingSoon: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isUnlocked) tierColor.copy(alpha = 0.1f) else PureWhite
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = if (isUnlocked) androidx.compose.foundation.BorderStroke(2.dp, tierColor) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (isUnlocked) Icons.Default.CheckCircle else Icons.Default.Star,
+                    contentDescription = null,
+                    tint = if (isUnlocked) tierColor else Color.Gray,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = tierName,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = if (isComingSoon) Color.Gray else DarkGreen
+                        )
+                    )
+                    Text(
+                        text = discount,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isUnlocked) tierColor else EcoGreen
+                        )
+                    )
+                    Text(
+                        text = requirement,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            }
+            if (isUnlocked) {
+                Text(
+                    text = "UNLOCKED",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = tierColor
+                    )
+                )
+            }
+        }
+    }
+}

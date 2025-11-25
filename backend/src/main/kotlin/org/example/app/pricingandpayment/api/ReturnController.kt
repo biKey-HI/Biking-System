@@ -7,7 +7,9 @@ import org.example.app.bmscoreandstationcontrol.persistence.DockingStationReposi
 import org.example.app.pricingandpayment.PaymentService
 import org.example.app.user.PaymentStrategyType
 import org.example.app.user.UserRepository
+import org.example.app.loyalty.TripCompletedEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.http.HttpStatus
@@ -21,6 +23,7 @@ class ReturnController(
     private val billing: BillingService,
     private val payments: PaymentService,
     private val tripFacade: TripFacade,
+    private val eventPublisher: ApplicationEventPublisher,
     private val stations: DockingStationRepository
 ) {
 
@@ -28,7 +31,7 @@ class ReturnController(
     private val logger = LoggerFactory.getLogger(ReturnController::class.java)
 
     // NOTE: Accept IDs as strings from the client, parse explicitly below
-    data class ReturnRequest(val tripId: String, val destStationId: String, val dockId: String?)
+    data class ReturnRequest(val tripId: String, val destStationId: String, val dockId: String?, val distanceTravelled: Int)
     data class ChargeRequest(val tripId: String)
     data class SaveCardRequest(val cardNumber: String, val expMonth: Int, val expYear: Int, val cvc: String)
 
@@ -64,6 +67,10 @@ class ReturnController(
                 throw ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found or cannot complete")
             }
 
+            // Publish TripCompletedEvent to trigger loyalty tier update
+            eventPublisher.publishEvent(TripCompletedEvent(tripId = trip.id, riderId = trip.riderId))
+            logger.info("Published TripCompletedEvent for trip ${trip.id} and rider ${trip.riderId}")
+
             val rider = users.findById(trip.riderId).orElseThrow {
                 logger.warn("Rider not found for id=${trip.riderId}")
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Rider not found")
@@ -77,6 +84,7 @@ class ReturnController(
             LoggerFactory.getLogger("UsedFlexDollars").info("Flex Dollars Applied: ${summary.cost.flexDollarCents.toFloat()/100.0}")
 
             rider.flexDollars += (if(receivesFlexDollars) 0.25 else 0.0).toFloat()
+            rider.kilometersTravelled += body.distanceTravelled
             users.save(rider)
 
             LoggerFactory.getLogger("NewFlexDollars").info("Flex Dollars Updated: ${rider.flexDollars}")
