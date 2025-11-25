@@ -26,7 +26,7 @@ import com.example.bikey.ui.pricing.PricingScreen
 import com.example.bikey.ui.operator.OperatorDashboardScreen
 import com.example.bikey.ui.operator.OperatorMapDashboardScreen
 import com.example.bikey.ui.operator.model.DockingStationResponse
-import com.example.bikey.ui.rider.AccountInformationScreen
+// import com.example.bikey.ui.rider.AccountInformationScreen  // TODO: Implement this screen
 import com.example.bikey.ui.rider.RiderDashboardScreen
 import com.example.bikey.ui.rider.RideHistoryScreen
 import com.example.bikey.ui.rider.ReservationScreen
@@ -82,11 +82,12 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            composable("accountInformation") {
-                                AccountInformationScreen(
-                                    onBack = { nav.popBackStack() }
-                                )
-                            }
+                            // TODO: Implement AccountInformationScreen
+                            // composable("accountInformation") {
+                            //     AccountInformationScreen(
+                            //         onBack = { nav.popBackStack() }
+                            //     )
+                            // }
 
                             composable("selectPricing") {
                                 PricingScreen(
