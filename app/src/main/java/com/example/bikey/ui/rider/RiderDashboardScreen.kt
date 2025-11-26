@@ -62,6 +62,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.text.style.TextAlign
 import com.example.bikey.ui.network.directionsApi
 import com.example.bikey.ui.ViewMode
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 
 data class ActiveRideInfo(
@@ -1609,6 +1611,12 @@ private fun CostItem(label: String, cents: Int, isTotal: Boolean = false, isDisc
     }
 }
 
+enum class BikeTypeFilter(val displayName: String) {
+    ALL("All Bikes"),
+    CLASSIC("Classic"),
+    EBIKE("E-Bike")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RideHistoryScreen(
@@ -1616,9 +1624,21 @@ fun RideHistoryScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var rides by remember { mutableStateOf<List<RideHistoryItemDTO>>(emptyList()) }
+    var allRides by remember { mutableStateOf<List<RideHistoryItemDTO>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // Filter states
+    var searchQuery by remember { mutableStateOf("") }
+    var startDate by remember { mutableStateOf<LocalDate?>(null) }
+    var endDate by remember { mutableStateOf<LocalDate?>(null) }
+    var bikeTypeFilter by remember { mutableStateOf(BikeTypeFilter.ALL) }
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+    
+    // Pagination
+    var itemsToShow by remember { mutableStateOf(20) }
+    val itemsPerPage = 20
 
     LaunchedEffect(Unit) {
         val userId = UserContext.id?.toString()
@@ -1633,7 +1653,7 @@ fun RideHistoryScreen(
                 isLoading = true
                 val response = bikeAPI.getRideHistory(userId)
                 if (response.isSuccessful) {
-                    rides = response.body() ?: emptyList()
+                    allRides = response.body() ?: emptyList()
                     errorMessage = null
                 } else {
                     errorMessage = "Failed to load ride history: ${response.code()}"
@@ -1647,6 +1667,37 @@ fun RideHistoryScreen(
             }
         }
     }
+    
+    // Filter rides based on search and filters
+    val filteredRides = remember(allRides, searchQuery, startDate, endDate, bikeTypeFilter) {
+        allRides.filter { ride ->
+            // Trip ID search
+            val matchesSearch = searchQuery.isBlank() || 
+                ride.summary.tripId.toString().contains(searchQuery, ignoreCase = true)
+            
+            // Date range filter
+            val rideStartDate = try {
+                Instant.parse(ride.summary.startTime).atZone(ZoneId.systemDefault()).toLocalDate()
+            } catch (e: Exception) {
+                null
+            }
+            val matchesStartDate = startDate == null || (rideStartDate != null && !rideStartDate.isBefore(startDate))
+            val matchesEndDate = endDate == null || (rideStartDate != null && !rideStartDate.isAfter(endDate))
+            
+            // Bike type filter
+            val matchesBikeType = when (bikeTypeFilter) {
+                BikeTypeFilter.ALL -> true
+                BikeTypeFilter.CLASSIC -> !ride.summary.isEBike
+                BikeTypeFilter.EBIKE -> ride.summary.isEBike
+            }
+            
+            matchesSearch && matchesStartDate && matchesEndDate && matchesBikeType
+        }
+    }
+    
+    // Paginated rides
+    val displayedRides = filteredRides.take(itemsToShow)
+    val hasMore = filteredRides.size > itemsToShow
 
     Scaffold(
         topBar = {
@@ -1675,7 +1726,7 @@ fun RideHistoryScreen(
             )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -1719,7 +1770,7 @@ fun RideHistoryScreen(
                         }
                     }
                 }
-                rides.isEmpty() -> {
+                allRides.isEmpty() -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -1750,20 +1801,467 @@ fun RideHistoryScreen(
                     }
                 }
                 else -> {
-                    LazyColumn(
+                    // Search Bar
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = PureWhite),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { 
+                                searchQuery = it
+                                itemsToShow = itemsPerPage // Reset pagination on search
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            placeholder = { Text("Search by Trip ID") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = EcoGreen
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { 
+                                        searchQuery = ""
+                                        itemsToShow = itemsPerPage
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = "Clear",
+                                            tint = Color.Gray
+                                        )
+                                    }
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EcoGreen,
+                                unfocusedBorderColor = Color.LightGray
+                            ),
+                            singleLine = true
+                        )
+                    }
+                    
+                    // Filter Row
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        colors = CardDefaults.cardColors(containerColor = PureWhite),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        ) {
+                            // Date Range Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Start Date
+                                OutlinedTextField(
+                                    value = startDate?.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) ?: "",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { showStartDatePicker = true },
+                                    placeholder = { Text("Start Date") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.DateRange,
+                                            contentDescription = null,
+                                            tint = EcoGreen,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (startDate != null) {
+                                            IconButton(onClick = { 
+                                                startDate = null
+                                                itemsToShow = itemsPerPage
+                                            }) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Clear,
+                                                    contentDescription = "Clear",
+                                                    tint = Color.Gray,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EcoGreen,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+                                
+                                // End Date
+                                OutlinedTextField(
+                                    value = endDate?.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) ?: "",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { showEndDatePicker = true },
+                                    placeholder = { Text("End Date") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.DateRange,
+                                            contentDescription = null,
+                                            tint = EcoGreen,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (endDate != null) {
+                                            IconButton(onClick = { 
+                                                endDate = null
+                                                itemsToShow = itemsPerPage
+                                            }) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Clear,
+                                                    contentDescription = "Clear",
+                                                    tint = Color.Gray,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EcoGreen,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Bike Type Filter
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                BikeTypeFilter.entries.forEach { filter ->
+                                    FilterChip(
+                                        selected = bikeTypeFilter == filter,
+                                        onClick = { 
+                                            bikeTypeFilter = filter
+                                            itemsToShow = itemsPerPage
+                                        },
+                                        label = { Text(filter.displayName) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = EcoGreen,
+                                            selectedLabelColor = PureWhite,
+                                            containerColor = Color.LightGray.copy(alpha = 0.3f)
+                                        )
+                                    )
+                                }
+                            }
+                            
+                            // Results count
+                            if (filteredRides.size != allRides.size) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Showing ${filteredRides.size} of ${allRides.size} rides",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Results
+                    if (filteredRides.isEmpty()) {
+                        // Empty state for filtered results
+                        Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(rides) { ride ->
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No results found",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkGreen
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Try clearing your filters or search query",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = {
+                                    searchQuery = ""
+                                    startDate = null
+                                    endDate = null
+                                    bikeTypeFilter = BikeTypeFilter.ALL
+                                    itemsToShow = itemsPerPage
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
+                            ) {
+                                Text("Clear Filters", color = PureWhite)
+                            }
+                        }
+                    } else {
+                        // Results Table/List
+                        LazyColumn(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            // Table Header (for compact view)
+                            item {
+                                RideHistoryTableHeader()
+                            }
+                            
+                            // Ride Items
+                            items(displayedRides) { ride ->
                             RideHistoryItem(ride = ride)
+                        }
+                            
+                            // Load More Button
+                            if (hasMore) {
+                                item {
+                                    Button(
+                                        onClick = { itemsToShow += itemsPerPage },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
+                                    ) {
+                                        Text(
+                                            "Load More (${filteredRides.size - itemsToShow} remaining)",
+                                            color = PureWhite
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+    
+    // Date Pickers
+    if (showStartDatePicker) {
+        DatePickerDialog(
+            initialDate = startDate ?: LocalDate.now(),
+            onDateSelected = { date ->
+                startDate = date
+                showStartDatePicker = false
+                itemsToShow = itemsPerPage
+            },
+            onDismiss = { showStartDatePicker = false }
+        )
+    }
+    
+    if (showEndDatePicker) {
+        DatePickerDialog(
+            initialDate = endDate ?: LocalDate.now(),
+            onDateSelected = { date ->
+                endDate = date
+                showEndDatePicker = false
+                itemsToShow = itemsPerPage
+            },
+            onDismiss = { showEndDatePicker = false }
+        )
+    }
+}
+
+@Composable
+fun RideHistoryTableHeader() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = EcoGreen.copy(alpha = 0.1f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Trip ID",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreen
+                ),
+                modifier = Modifier.weight(1.5f)
+            )
+            Text(
+                text = "Rider",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreen
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "Route",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreen
+                ),
+                modifier = Modifier.weight(2f)
+            )
+            Text(
+                text = "Bike",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreen
+                ),
+                modifier = Modifier.weight(0.8f)
+            )
+            Text(
+                text = "Cost",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreen
+                ),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerDialog(
+    initialDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var day by remember { mutableStateOf(initialDate.dayOfMonth.toString()) }
+    var month by remember { mutableStateOf(initialDate.monthValue.toString()) }
+    var year by remember { mutableStateOf(initialDate.year.toString()) }
+    
+    fun updateSelectedDate(): LocalDate? {
+        return try {
+            if (day.isNotEmpty() && month.isNotEmpty() && year.isNotEmpty()) {
+                LocalDate.of(
+                    year.toInt(),
+                    month.toInt().coerceIn(1, 12),
+                    day.toInt().coerceIn(1, 31)
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Select Date",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreen
+                )
+            )
+        },
+        text = {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = month,
+                        onValueChange = { 
+                            if (it.length <= 2 && (it.isEmpty() || it.all { char -> char.isDigit() })) {
+                                month = it
+                            }
+                        },
+                        label = { Text("Month") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        placeholder = { Text("MM") }
+                    )
+                    OutlinedTextField(
+                        value = day,
+                        onValueChange = { 
+                            if (it.length <= 2 && (it.isEmpty() || it.all { char -> char.isDigit() })) {
+                                day = it
+                            }
+                        },
+                        label = { Text("Day") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        placeholder = { Text("DD") }
+                    )
+                    OutlinedTextField(
+                        value = year,
+                        onValueChange = { 
+                            if (it.length <= 4 && (it.isEmpty() || it.all { char -> char.isDigit() })) {
+                                year = it
+                            }
+                        },
+                        label = { Text("Year") },
+                        modifier = Modifier.weight(1.5f),
+                        singleLine = true,
+                        placeholder = { Text("YYYY") }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Format: MM/DD/YYYY",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { 
+                    updateSelectedDate()?.let { onDateSelected(it) }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
+                enabled = day.isNotEmpty() && month.isNotEmpty() && year.isNotEmpty()
+            ) {
+                Text("OK", color = PureWhite)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = DarkGreen)
+            }
+        }
+    )
 }
 
 @Composable
@@ -1792,41 +2290,120 @@ fun RideHistoryItem(ride: RideHistoryItemDTO) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header with date and cost
+            // Summary Row - Trip ID, Rider, Route, Bike Type, Cost
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    startTime?.let {
+                // Trip ID
+                Column(modifier = Modifier.weight(1.5f)) {
                         Text(
-                            text = dateFormatter.format(it),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                color = DarkGreen
-                            )
-                        )
-                    }
-                    Text(
-                        text = if (ride.summary.isEBike) "E-Bike" else "Classic Bike",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "Trip ID",
+                        style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
+                    Text(
+                        text = ride.summary.tripId.toString().take(8) + "...",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                                color = DarkGreen
+                            )
                 }
-                // Show plan name if subscription and cost is $0, otherwise show cost
+                
+                // Rider
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Rider",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = UserContext.email?.substringBefore("@")?.replaceFirstChar { it.uppercase() } ?: "N/A",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = DarkGreen
+                    )
+                }
+                
+                // Route (Start → End)
+                Column(modifier = Modifier.weight(2f)) {
+                    Text(
+                        text = "Route",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "${ride.summary.startStationName} → ${ride.summary.endStationName}",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = DarkGreen,
+                        maxLines = 1
+                    )
+                }
+                
+                // Bike Type
+                Column(modifier = Modifier.weight(0.8f)) {
+                    Text(
+                        text = "Bike",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = if (ride.summary.isEBike) "E-Bike" else "Classic",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = DarkGreen
+                    )
+                }
+                
+                // Cost
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Cost",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
                 val isSubscription = ride.paymentStrategy != PricingPlan.DEFAULT_PAY_NOW.displayName
                 val costText = if (isSubscription && ride.summary.cost.totalCents == 0) {
-                    ride.paymentStrategy
+                        "Sub"
                 } else {
                     "$${ride.summary.cost.totalCents / 100.0}"
                 }
                 Text(
                     text = costText,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = EcoGreen
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = EcoGreen,
+                        textAlign = TextAlign.End
                     )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Date and additional info row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                startTime?.let {
+                    Text(
+                        text = dateFormatter.format(it),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+                Text(
+                    text = "⏱ ${ride.summary.durationMinutes} min",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
                 )
             }
 
