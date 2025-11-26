@@ -12,14 +12,27 @@ class PricingService(private val loyaltyService: LoyaltyService) {
     fun price(bike: Bicycle, pricingPlan: PaymentStrategyType, user: User? = null): CostBreakdownDTO {
         val baseCost = (bike.calculateCost(pricingPlan) ?: 0f)
 
-        // Calculate loyalty discount
-        val discountAmount = if (user != null)
-            baseCost*user.loyaltyTier.discountPercentage
-        else 0f
+        // 1. Determine total discount percentage (Loyalty + Operator)
+        var discountPercentage = if (user != null) user.loyaltyTier.discountPercentage else 0f
 
-        val flexDollars = user?.let{user.useFlexDollars(baseCost - discountAmount)} ?: 0f
+        // additional 25% discount if the user is an operator
+        if (user != null && user.isOperator) {
+            discountPercentage += 0.25f
+        }
 
+        // total discount amount
+        val discountAmount = baseCost * discountPercentage
+
+        // apply Flex Dollars to the remaining amount
+        val flexDollars = user?.let { it.useFlexDollars(baseCost - discountAmount) } ?: 0f
+
+        // calculate Final Cost
         val finalCost = baseCost - discountAmount - flexDollars
+
+        // determine display string for the tier (e.g., "Gold + Operator")
+        val tierDisplayName = user?.loyaltyTier?.displayName
+        val displayTier = if (user != null && user.isOperator) "$tierDisplayName + Operator" else tierDisplayName
+        
         return CostBreakdownDTO(
             baseCents = (bike.baseCost*100).toInt(),
             perMinuteCents = 0,
@@ -28,7 +41,7 @@ class PricingService(private val loyaltyService: LoyaltyService) {
                 ?.toMinutes() ?: 0)*100).toInt() else 0,
             overtimeCents = ((bike.getOvertimeCost() ?: 0f)*100).toInt(),
             discountCents = (discountAmount*100).toInt(),
-            loyaltyTier = user?.loyaltyTier?.displayName,
+            loyaltyTier = displayTier,
             totalCents = (finalCost*100).toInt(),
             flexDollarCents = (flexDollars*100).toInt()
         )
