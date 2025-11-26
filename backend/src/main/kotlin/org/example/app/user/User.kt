@@ -51,6 +51,8 @@ class User(
     @Column(nullable = false)
     var createdAt: Instant = Instant.now(),
 
+    //removed UserRole to support dual role (isOperator/isRider)
+    @Deprecated("Use isOperator/isRider for permission logic")
     // Role default to Rider
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
@@ -71,7 +73,16 @@ class User(
     var flexDollars: Float = 0.0.toFloat(),
 
     @Column(nullable = false)
-    var kilometersTravelled: Int = 0
+    var kilometersTravelled: Int = 0,
+
+    //Dual role switching
+    @Column(nullable = false)
+    var isRider: Boolean = true,
+
+    @Column(nullable = false)
+    var isOperator: Boolean = false,
+
+
 ) {
     fun useFlexDollars(on: Float): Float {
         val used = on.coerceAtMost(flexDollars)

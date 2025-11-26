@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+
                             // TODO: Implement AccountInformationScreen
                             // composable("accountInformation") {
                             //     AccountInformationScreen(
@@ -114,30 +115,35 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            composable("login") {
-                                LoginScreen(
-                                    onGoToRegister = {
-                                        nav.navigate("register")
-                                    },
-                                    onGoBack = {
-                                        nav.navigate("welcome") {
+                        composable("login") {
+                            LoginScreen(
+                                onGoToRegister = {
+                                    nav.navigate("register")
+                                },
+                                onGoBack = {
+                                    nav.navigate("welcome") {
+                                        popUpTo("welcome") { inclusive = true }
+                                    }
+                                },
+                                onLoggedIn = { email, isRider, isOperator ->
+                                    // Navigate to loading screen first, then to appropriate dashboard
+                                    if (isRider && !isOperator) {
+                                        nav.navigate("loadingToRider/$email") {
                                             popUpTo("welcome") { inclusive = true }
                                         }
-                                    },
-                                    onLoggedIn = { email, role ->
-                                        // Navigate to loading screen first, then to appropriate dashboard
-                                        if (role == "OPERATOR") {
-                                            nav.navigate("loadingToOperator/$email") {
-                                                popUpTo("welcome") { inclusive = true }
-                                            }
-                                        } else {
-                                            nav.navigate("loadingToRider/$email") {
-                                                popUpTo("welcome") { inclusive = true }
-                                            }
+                                    } else if (!isRider && isOperator) {
+                                        nav.navigate("loadingToOperator/$email") {
+                                            popUpTo("welcome") { inclusive = true }
+                                        }
+                                    }else {
+                                        //dual-operator case
+                                        nav.navigate("loadingToOperator/$email") {
+                                            popUpTo("welcome") { inclusive = true }
                                         }
                                     }
-                                )
-                            }
+                                }
+                            )
+                        }
 
                             // Loading screen for rider dashboard
                             composable("loadingToRider/{email}") { backStackEntry ->

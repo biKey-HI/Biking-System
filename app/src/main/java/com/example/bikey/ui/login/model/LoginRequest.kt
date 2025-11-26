@@ -18,7 +18,8 @@ data class LoginResponse(
     val email: String,
     @Serializable(with = UUIDSerializer::class)
     val userId: UUID,
-    val role: String,
+    val isRider: Boolean,
+    val isOperator: Boolean,
     val pricingPlan: PricingPlan,
 
     val loyaltyTier: String? = null,

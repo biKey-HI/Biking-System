@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.bikey.ui.UserContext
+import com.example.bikey.ui.ViewMode
 import com.example.bikey.ui.theme.*
 
 @Composable
@@ -54,13 +56,32 @@ fun OperatorDashboardScreen(
                 )
             }
 
-            IconButton(onClick = onLogout) {
-                Icon(
-                    imageVector = Icons.Default.ExitToApp,
-                    contentDescription = "Logout",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
+                // SWITCH BUTTON FOR DUAL USERS
+                if (UserContext.isOperator && UserContext.isRider) {
+                    TextButton(onClick = {
+                        UserContext.viewMode = ViewMode.RIDER
+                        UserContext.nav?.navigate("loadingToRider/${UserContext.email}") {
+                            popUpTo("operatorDashboard/${UserContext.email}") { inclusive = true }
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.SwapHoriz,
+                            contentDescription = "Switch to Rider View",
+                            tint = EcoGreen
+                        )
+                    }
+                }
+
+                // LOGOUT BUTTON
+                IconButton(onClick = onLogout) {
+                    Icon(
+                        imageVector = Icons.Default.ExitToApp,
+                        contentDescription = "Logout",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+
+
         }
 
         Spacer(modifier = Modifier.height(24.dp))

@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.text.style.TextAlign
 import com.example.bikey.ui.network.directionsApi
+import com.example.bikey.ui.ViewMode
 import java.time.LocalDate
 import java.time.ZoneOffset
 
@@ -1134,7 +1135,21 @@ fun HamburgerMenu(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                HorizontalDivider()
+            HorizontalDivider()
+
+            if (UserContext.isOperator && UserContext.isRider) {
+                MenuItemButton(
+                    icon = Icons.Default.SwapHoriz,
+                    text = "Switch to Operator View",
+                    onClick = {
+                        UserContext.viewMode = ViewMode.OPERATOR
+                        UserContext.nav?.navigate("loadingToOperator/${UserContext.email}") {
+                            popUpTo("riderDashboard/${UserContext.email}") { inclusive = true }
+                        }
+                    }
+
+                )
+            }
 
                 MenuItemButton(
                     icon = Icons.AutoMirrored.Filled.ExitToApp,

@@ -30,6 +30,14 @@ class DatabaseInitializer(
             lastName = "User",
             username = "admin1"
         )
+        createDualOperatorIfNotExists(
+            email = "dual@bikey.com",
+            password = "dual1234",
+            firstName = "Dual",
+            lastName = "User",
+            username = "dual1"
+        )
+
     }
 
     private fun createOperatorIfNotExists(
@@ -69,10 +77,57 @@ class DatabaseInitializer(
                     lastName = lastName,
                     username = username,
                     createdAt = java.time.Instant.now(),
-                    role = UserRole.OPERATOR
+                    isRider = false,
+                    isOperator = true
                 )
             )
             println("Created operator account: $email")
         }
     }
+    private fun createDualOperatorIfNotExists(
+        email: String,
+        password: String,
+        firstName: String,
+        lastName: String,
+        username: String
+    ) {
+        if (!userRepository.existsByEmail(email)) {
+            val address = addressRepository.findByLine1AndLine2AndCityAndProvinceAndPostalCodeAndCountry(
+                "123 System St",
+                null,
+                "Toronto",
+                Province.ON,
+                "M5V 3A8",
+                "CA"
+            ) ?: addressRepository.save(
+                Address(
+                    line1 = "123 System St",
+                    line2 = null,
+                    city = "Toronto",
+                    province = Province.ON,
+                    postalCode = "M5V 3A8",
+                    country = "CA"
+                )
+            )
+
+            userRepository.save(
+                User(
+                    id = null,
+                    address = address,
+                    payment = null,
+                    email = email,
+                    passwordHash = encoder.encode(password),
+                    firstName = firstName,
+                    lastName = lastName,
+                    username = username,
+                    createdAt = java.time.Instant.now(),
+                    isRider = true,
+                    isOperator = true
+                )
+            )
+            println("Created dual-operator account: $email")
+        }
+    }
 }
+
+

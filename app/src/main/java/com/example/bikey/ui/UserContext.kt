@@ -4,14 +4,28 @@ import com.example.bikey.ui.network.directionsApi
 import com.example.bikey.ui.operator.model.DockingStationResponse
 import java.util.UUID
 
-class User(val id: UUID = UUID.randomUUID(), val email: String, val isOperator: Boolean = false, var pricingPlan: PricingPlan? = if(isOperator) {null} else {PricingPlan.DEFAULT_PAY_NOW}, var hasReservation: Boolean = false, var reservationStationId: String? = null, var flexDollars: Float = 0.0f, var kilometersTravelled: Int = 0)
+class User(val id: UUID = UUID.randomUUID(),
+           val email: String,
+           val isRider: Boolean = true,
+           val isOperator: Boolean = false,
+           var pricingPlan: PricingPlan? = if(!isRider) {null} else {PricingPlan.DEFAULT_PAY_NOW},
+           var hasReservation: Boolean = false,
+           var reservationStationId: String? = null,
+           var flexDollars: Float = 0.0f,
+           var kilometersTravelled: Int = 0)
+
+enum class ViewMode { RIDER, OPERATOR }
 
 class UserContext {
     companion object {
         var user: User? = null
 
         val id: UUID? get() = user?.id
-        val isOperator: Boolean? get() = user?.isOperator
+
+        val isRider: Boolean get() = user?.isRider ?: true
+
+        val isOperator: Boolean get() = user?.isOperator ?: false
+
         val email: String? get() = user?.email
         var pricingPlan: PricingPlan?
             get() = user?.pricingPlan
@@ -31,6 +45,23 @@ class UserContext {
 
         var notificationToken: String? = null
         var nav: NavHostController? = null
+        var viewMode: ViewMode = ViewMode.RIDER
+
+        fun toggleViewMode() {
+            user?.let {
+                if (it.isRider && it.isOperator) {
+                    viewMode = if (viewMode == ViewMode.RIDER) {
+                        ViewMode.OPERATOR
+                    } else {
+                        ViewMode.RIDER
+                    }
+                }
+            }
+        }
+
+
+
+
     }
 }
 
