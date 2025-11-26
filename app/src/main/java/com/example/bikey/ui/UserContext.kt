@@ -1,20 +1,67 @@
 package com.example.bikey.ui
 import androidx.navigation.NavHostController
+import com.example.bikey.ui.network.directionsApi
+import com.example.bikey.ui.operator.model.DockingStationResponse
 import java.util.UUID
 
-class User(val id: UUID = UUID.randomUUID(), val email: String, val isOperator: Boolean = false, var pricingPlan: PricingPlan? = if(isOperator) {null} else {PricingPlan.DEFAULT_PAY_NOW}, var hasReservation: Boolean = false, var reservationStationId: String? = null)
+class User(val id: UUID = UUID.randomUUID(),
+           val email: String,
+           val isRider: Boolean = true,
+           val isOperator: Boolean = false,
+           var pricingPlan: PricingPlan? = if(!isRider) {null} else {PricingPlan.DEFAULT_PAY_NOW},
+           var hasReservation: Boolean = false,
+           var reservationStationId: String? = null,
+           var flexDollars: Float = 0.0f,
+           var kilometersTravelled: Int = 0)
+
+enum class ViewMode { RIDER, OPERATOR }
 
 class UserContext {
     companion object {
         var user: User? = null
+
         val id: UUID? get() = user?.id
-        val isOperator: Boolean? get() = user?.isOperator
+
+        val isRider: Boolean get() = user?.isRider ?: true
+
+        val isOperator: Boolean get() = user?.isOperator ?: false
+
         val email: String? get() = user?.email
-        val pricingPlan: PricingPlan? get() = user?.pricingPlan
-        val hasReservation: Boolean? get() = user?.hasReservation
-        val reservationStationId: String? get() = user?.reservationStationId
+        var pricingPlan: PricingPlan?
+            get() = user?.pricingPlan
+            set(plan) {user?.pricingPlan = plan}
+        var hasReservation: Boolean?
+            get() = user?.hasReservation
+            set(has) {user?.hasReservation = has == true}
+        var reservationStationId: String?
+            get() = user?.reservationStationId
+            set(id) {user?.reservationStationId = id}
+        var flexDollars: Float
+            get() = user?.flexDollars ?: 0.0f
+            set(dollars) {user?.flexDollars = dollars}
+        var kilometersTravelled: Int
+            get() = user?.kilometersTravelled ?: 0
+            set(kilometers) {user?.kilometersTravelled = kilometers}
+
         var notificationToken: String? = null
         var nav: NavHostController? = null
+        var viewMode: ViewMode = ViewMode.RIDER
+
+        fun toggleViewMode() {
+            user?.let {
+                if (it.isRider && it.isOperator) {
+                    viewMode = if (viewMode == ViewMode.RIDER) {
+                        ViewMode.OPERATOR
+                    } else {
+                        ViewMode.RIDER
+                    }
+                }
+            }
+        }
+
+
+
+
     }
 }
 

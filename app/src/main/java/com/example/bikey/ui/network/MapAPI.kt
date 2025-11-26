@@ -9,7 +9,9 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
 import retrofit2.Retrofit
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Query
 
 interface MapAPI {
     @GET("api/map")
@@ -37,3 +39,26 @@ val mapRetrofit: Retrofit by lazy {
 }
 
 val mapAPI: MapAPI by lazy { mapRetrofit.create(MapAPI::class.java) }
+
+val directionsApi: DirectionsApi by lazy {
+    Retrofit.Builder()
+        .baseUrl("https://maps.googleapis.com/maps/api/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(DirectionsApi::class.java)
+}
+
+interface DirectionsApi {
+    @GET("directions/json")
+    suspend fun getDistance(
+        @Query("origin") origin: String,
+        @Query("destination") destination: String,
+        @Query("mode") mode: String = "driving",
+        @Query("key") apiKey: String = BuildConfig.MAPS_API_KEY
+    ): DirectionsResponse
+}
+data class DirectionsResponse(val routes: List<Route>)
+data class Route(val legs: List<Leg>)
+data class Leg(val distance: DistanceValue)
+data class DistanceValue(val value: Int)
+

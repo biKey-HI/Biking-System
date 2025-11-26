@@ -30,7 +30,8 @@ dependencies {
     implementation("org.springframework.security:spring-security-crypto:6.3.2")
 
     implementation("org.apache.commons:commons-compress:1.26.2")
-
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
+    testImplementation(kotlin("test-junit5"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     // Timers
@@ -42,6 +43,10 @@ dependencies {
 
     // Firebase
     implementation("com.google.firebase:firebase-admin:9.2.0")
+
+    // Testing
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("io.mockk:mockk:1.13.7")
 }
 
 tasks.test { useJUnitPlatform() }

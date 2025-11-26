@@ -13,7 +13,8 @@ data class RegisterRequest(
     val lastName: String,
     val username: String,
     val password: String,
-    val role: UserRole = UserRole.RIDER,
+    val isRider: Boolean,
+    val isOperator: Boolean,
     val address: AddressPayload,
     val payment: PaymentPayload? = null,
     val notificationToken: String

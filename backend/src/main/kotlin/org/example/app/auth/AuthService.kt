@@ -10,6 +10,7 @@ import org.example.app.user.Payment
 import org.example.app.user.Address
 import org.example.app.user.PaymentRepository
 import org.example.app.user.AddressRepository
+import org.example.app.loyalty.LoyaltyService
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.example.app.user.UserRole
@@ -20,7 +21,8 @@ import org.springframework.transaction.annotation.Transactional
 class AuthService(
     private val userRepository: UserRepository,
     private val addressRepository: AddressRepository,
-    private val paymentRepository: PaymentRepository
+    private val paymentRepository: PaymentRepository,
+    private val loyaltyService: LoyaltyService
 ) {
     private val encoder = BCryptPasswordEncoder()
 
@@ -57,7 +59,8 @@ class AuthService(
                 lastName = req.lastName,
                 username = req.username,
                 // Force RIDER role for all registrations
-                role = UserRole.RIDER,
+                isRider = true,
+                isOperator = false,
                 address = address,
                 notificationToken = req.notificationToken
             )
@@ -88,37 +91,78 @@ class AuthService(
         )
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun login(req: LoginRequest): LoginResponse {
-        val email = req.email.trim()
+        try {
+            val email = req.email.trim()
 
-        // Unwrap nullable result; throw if not found
-        var user = userRepository.findByEmail(email)
-            ?: throw InvalidCredentialsException()
+            // Unwrap nullable result; throw if not found
+            var user = userRepository.findByEmail(email)
+                ?: throw InvalidCredentialsException()
 
-        // Now 'user' is non-null, so these are fine:
-        if (!encoder.matches(req.password, user.passwordHash)) {
-            throw InvalidCredentialsException()
-        }
+            // Now 'user' is non-null, so these are fine:
+            if (!encoder.matches(req.password, user.passwordHash)) {
+                throw InvalidCredentialsException()
+            }
 
-        val id = user.id ?: error("Persisted user has null id")
-        val token = TokenUtil.issueFakeToken(id, user.email)
+            val id = user.id ?: error("Persisted user has null id")
 
+            // Check for loyalty tier changes (only for riders)
+            val oldTier = user.loyaltyTier
+            var tierChanged = false
+            var tierUpgraded = false
+            var tierDowngraded = false
         // Access email, role and plan within transaction to ensure they're loaded
         val userEmail = user.email
         val userRole = user.role.name
+        val isRider = user.isRider
+        val isOperator= user.isOperator
         val userPricingPlan = user.paymentStrategy
+        val userFlexDollars = user.flexDollars
 
-        user.notificationToken = if(req.notificationToken == "") {null} else {req.notificationToken}
-        userRepository.save(user)
+            if (user.role == UserRole.RIDER) {
+                try {
+                    val newTier = loyaltyService.updateLoyaltyTier(id)
+                    tierChanged = oldTier != newTier
+                    tierUpgraded = newTier.ordinal > oldTier.ordinal
+                    tierDowngraded = newTier.ordinal < oldTier.ordinal
+                    // Refresh user after tier update
+                    user = userRepository.findById(id).orElseThrow()
+                } catch (e: Exception) {
+                    // Log the error but don't fail the login if tier update fails
+                    println("Failed to update loyalty tier for user $id: ${e.message}")
+                    e.printStackTrace()
+                    // Continue with login using existing tier
+                }
+            }
 
-        return LoginResponse(
-            token = token,
-            email = userEmail,
-            userId = id,
-            role = userRole,
-            pricingPlan = userPricingPlan
-        )
+            val token = TokenUtil.issueFakeToken(id, user.email)
+
+            user.notificationToken = if(req.notificationToken == "") {null} else {req.notificationToken}
+            userRepository.save(user)
+
+            return LoginResponse(
+                token = token,
+                email = userEmail,
+                userId = id,
+                isRider = isRider,
+                isOperator = isOperator,
+                pricingPlan = userPricingPlan,
+                flexDollars = userFlexDollars,
+                kilometersTravelled = user.kilometersTravelled,
+                loyaltyTier = user.loyaltyTier.name,
+                loyaltyTierDisplayName = user.loyaltyTier.displayName,
+                tierChanged = tierChanged,
+                tierUpgraded = tierUpgraded,
+                tierDowngraded = tierDowngraded,
+                oldTier = if (tierChanged) oldTier.name else null,
+                newTier = if (tierChanged) user.loyaltyTier.name else null
+            )
+        } catch (e: Exception) {
+            println("Login failed with exception: ${e.javaClass.name}: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
     }
 }
 

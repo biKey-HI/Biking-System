@@ -30,7 +30,7 @@ import com.example.bikey.ui.theme.MintLight
 fun LoginScreen(
     onGoToRegister: () -> Unit = {},
     onGoBack: () -> Unit = {},
-    onLoggedIn: (String, String) -> Unit = { _, _ -> },
+    onLoggedIn: (String, Boolean, Boolean) -> Unit = { _, _, _ -> },
     vm: LoginViewModel = viewModel()
 ) {
     val state = vm.state
@@ -40,19 +40,19 @@ fun LoginScreen(
         state.errorMsg?.let { snackbarHostState.showSnackbar(it) }
     }
 
-    LaunchedEffect(vm) {
+    LaunchedEffect(Unit) {
         vm.events.collect { event ->
             when (event) {
                 is LoginEvent.Success -> {
                     snackbarHostState.showSnackbar(message = event.msg, withDismissAction = true)
-                    onLoggedIn(event.email, event.role)
+                    onLoggedIn(event.email, event.isRider, event.isOperator)
                     vm.consumeSuccess()
                 }
                 is LoginEvent.ShowMessage -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
                 is LoginEvent.NavigateHome -> {
-                    onLoggedIn(event.email, event.role)
+                    onLoggedIn(event.email, event.isRider, event.isOperator)
                 }
             }
         }

@@ -15,8 +15,29 @@ data class LoginRequest(
 
 data class LoginResponse(
     val token: String,
+
     val email: String,
+
     val userId: UUID,
-    val role: String,
-    val pricingPlan: PaymentStrategyType? = null
+    val isRider: Boolean,
+    val isOperator: Boolean,
+    val pricingPlan: PaymentStrategyType? = null,
+
+    val loyaltyTier: String? = null,
+
+    val loyaltyTierDisplayName: String? = null,
+
+    val tierChanged: Boolean = false,
+
+    val tierUpgraded: Boolean = false,
+
+    val tierDowngraded: Boolean = false,
+
+    val oldTier: String? = null,
+
+    val newTier: String? = null,
+
+    val flexDollars: Float = 0.0f,
+
+    val kilometersTravelled: Int = 0
 )

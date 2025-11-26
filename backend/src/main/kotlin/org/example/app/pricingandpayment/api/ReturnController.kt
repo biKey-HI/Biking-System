@@ -1,13 +1,15 @@
 package org.example.app.pricingandpayment.api
 
 import org.example.app.billing.BillingService
-import org.example.app.billing.PricingService
 import org.example.app.billing.ReturnAndSummaryResponse
 import org.example.app.bmscoreandstationcontrol.persistence.BicycleRepository
+import org.example.app.bmscoreandstationcontrol.persistence.DockingStationRepository
 import org.example.app.pricingandpayment.PaymentService
 import org.example.app.user.PaymentStrategyType
 import org.example.app.user.UserRepository
+import org.example.app.loyalty.TripCompletedEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.http.HttpStatus
@@ -20,14 +22,16 @@ class ReturnController(
     private val bikes: BicycleRepository,
     private val billing: BillingService,
     private val payments: PaymentService,
-    private val tripFacade: TripFacade
+    private val tripFacade: TripFacade,
+    private val eventPublisher: ApplicationEventPublisher,
+    private val stations: DockingStationRepository
 ) {
 
     // debug
     private val logger = LoggerFactory.getLogger(ReturnController::class.java)
 
     // NOTE: Accept IDs as strings from the client, parse explicitly below
-    data class ReturnRequest(val tripId: String, val destStationId: String, val dockId: String?)
+    data class ReturnRequest(val tripId: String, val destStationId: String, val dockId: String?, val distanceTravelled: Int)
     data class ChargeRequest(val tripId: String)
     data class SaveCardRequest(val cardNumber: String, val expMonth: Int, val expYear: Int, val cvc: String)
 
@@ -49,6 +53,13 @@ class ReturnController(
         }
 
         try {
+            val station = stations.findById(destStationUuid).orElseThrow {
+                logger.warn("Station not found for id=${destStationUuid}")
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Station not found")
+            }
+            val receivesFlexDollars = station.offersFlexDollars()
+            LoggerFactory.getLogger("ReceivesFlexDollars").info("Flex Dollars Received: ${receivesFlexDollars}")
+
             val trip = try {
                 tripFacade.completeTripAndFetchDomain(tripUuid, destStationUuid, body.dockId)
             } catch (e: NoSuchElementException) {
@@ -56,15 +67,28 @@ class ReturnController(
                 throw ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found or cannot complete")
             }
 
+            // Publish TripCompletedEvent to trigger loyalty tier update
+            eventPublisher.publishEvent(TripCompletedEvent(tripId = trip.id, riderId = trip.riderId))
+            logger.info("Published TripCompletedEvent for trip ${trip.id} and rider ${trip.riderId}")
+
             val rider = users.findById(trip.riderId).orElseThrow {
                 logger.warn("Rider not found for id=${trip.riderId}")
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Rider not found")
             }
 
-            val summary = billing.summarize(trip, bikes, rider.paymentStrategy)
+            val summary = billing.summarize(trip, bikes, rider.paymentStrategy, rider)
 
             val requiresPayment = payments.requiresImmediatePayment(rider) && summary.cost.totalCents > 0
             val saved = payments.getSavedCard(rider.id!!)
+
+            LoggerFactory.getLogger("UsedFlexDollars").info("Flex Dollars Applied: ${summary.cost.flexDollarCents.toFloat()/100.0}")
+
+            rider.flexDollars += (if(receivesFlexDollars) 0.25 else 0.0).toFloat()
+            rider.kilometersTravelled += body.distanceTravelled
+            users.save(rider)
+
+            LoggerFactory.getLogger("NewFlexDollars").info("Flex Dollars Updated: ${rider.flexDollars}")
+
             return ReturnAndSummaryResponse(
                 summary = summary,
                 paymentStrategy = rider.paymentStrategy.name,
@@ -94,7 +118,7 @@ class ReturnController(
             val user = users.findById(userId).orElseThrow()
             payments.handlePayment(
                 user,
-                billing.summarize(tripFacade.getTripDomain(tripUuid), bikes, user.paymentStrategy)
+                billing.summarize(tripFacade.getTripDomain(tripUuid), bikes, user.paymentStrategy, user)
             )
         } catch (e: IllegalArgumentException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid tripId")
